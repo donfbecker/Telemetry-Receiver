@@ -96,6 +96,22 @@ public class MainActivity extends AppCompatActivity {
         setFrequency(n);
     }
 
+    public void onEnableAGC(View v) {
+        streamer.setAGCMode(true);
+    }
+
+    public void onDisableAGC(View v) {
+        streamer.setAGCMode(false);
+    }
+
+    public void onEnableManualGain(View v) {
+        streamer.setGainMode(true);
+    }
+
+    public void onDisableManualGain(View v) {
+        streamer.setGainMode(false);
+    }
+
     private void setFrequency(int frequency) {
         this.currentFrequency = frequency;
         textFrequency.setText(String.format("%.6f", (currentFrequency/1000000.0)));

@@ -41,10 +41,20 @@
 
 		<LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
 			<TextView android:id="@+id/text_squelch" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="20" android:layout_margin="5dp" android:text="Squelch" />
-			<SeekBar android:id="@+id/seek_squelch"  android:layout_width="0dp" android:layout_height="wrap_content" android:layout_margin="5dp" android:layout_weight="80" android:max="100"/> 
+			<SeekBar android:id="@+id/seek_squelch"  android:layout_width="0dp" android:layout_height="wrap_content" android:layout_margin="5dp" android:layout_weight="80" android:max="200"/> 
 		</LinearLayout>
 
 		<LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+			<Button android:id="@+id/button_enable_agc" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_margin="5dp" android:text="Enable AGC" android:onClick="onEnableAGC" />
+			<Button android:id="@+id/button_disable_agc" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_margin="5dp" android:text="Disable AGC" android:onClick="onDisableAGC" />
+		</LinearLayout>
+
+		<LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+			<Button android:id="@+id/button_enable_manual_gain" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_margin="5dp" android:text="Enable Manual Gain" android:onClick="onEnableManualGain" />
+			<Button android:id="@+id/button_disable_manual_gain" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_margin="5dp" android:text="Disable Manual Gain" android:onClick="onDisableManualGain" />
+		</LinearLayout>
+
+		<LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:orientation="horizontal">
 			<Button android:id="@+id/button_frequency_148039000" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_margin="5dp" android:text="148.039" android:onClick="onSetFrequency" />
 			<Button android:id="@+id/button_frequency_148420770" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_margin="5dp" android:text="148.420" android:onClick="onSetFrequency" />
 		</LinearLayout>

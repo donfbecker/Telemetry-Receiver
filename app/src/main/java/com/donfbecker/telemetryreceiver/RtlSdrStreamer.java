@@ -63,8 +63,7 @@ public class RtlSdrStreamer {
 
                     // Let's try disabling AGC
                     setAGCMode(false);
-                    setGainMode(true);
-                    //setGain(1200);
+                    setGainMode(false);
 
                     audioTrack.play();
                     stayAlive = true;
