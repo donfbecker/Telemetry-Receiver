@@ -62,6 +62,22 @@ public class MainActivity extends AppCompatActivity {
                 }
         );
 
+        final SeekBar softwareGainSeekBar = findViewById(R.id.seek_software_gain);
+        softwareGainSeekBar.setOnSeekBarChangeListener(
+                new SeekBar.OnSeekBarChangeListener() {
+                    @Override
+                    public void onProgressChanged(SeekBar seekBar, int gain, boolean b) {
+                        //set gain to decimal values between 1 and 5.
+                        setSoftwareGain(gain/100.0f);
+                    }
+
+                    @Override
+                    public void onStartTrackingTouch(SeekBar seekBar) { }
+                    @Override
+                    public void onStopTrackingTouch(SeekBar seekBar) { }
+                }
+        );
+
         final SeekBar squelchSeekBar = findViewById(R.id.seek_squelch);
         squelchSeekBar.setOnSeekBarChangeListener(
                 new SeekBar.OnSeekBarChangeListener() {
@@ -123,17 +139,13 @@ public class MainActivity extends AppCompatActivity {
         streamer.setGain(gain);
     }
 
+    private void setSoftwareGain(float gain) {
+        streamer.setSoftwareGain(gain);
+    }
+
     private void setSquelch(int squelch) {
         this.currentSquelch = squelch;
         streamer.setSquelch(squelch);
-    }
-
-    public void onGainChanged(SeekBar seekBar, int progress, boolean fromUser) {
-        Log.d("DEBUG", "Got progress change of: " + progress);
-    }
-
-    public void onSquelchChanged(SeekBar seekBar, int progress, boolean fromUser) {
-        Log.d("DEBUG", "Got progress change of: " + progress);
     }
 
     @Override

@@ -14,6 +14,7 @@ import android.util.Log;
 public class RtlSdrStreamer {
     public static final int IQ_SAMPLE_RATE = 1920000;
     public static final int AUDIO_SAMPLE_RATE = 48000;
+    public static final int SAMPLE_RATIO = 40;
 
     public static final byte COMMAND_SET_FREQUENCY 	= 0x01;
     public static final byte COMMAND_SET_SAMPLERATE = 0x02;
@@ -31,6 +32,7 @@ public class RtlSdrStreamer {
     private int trackBufferSize;
     private int iqBufferSize;
 
+    private float softwareGain = 1;
     private float squelch = 0;
 
     private ArrayBlockingQueue<byte[]> commandQueue = null;
@@ -47,7 +49,7 @@ public class RtlSdrStreamer {
         Log.d("DEBUG", "RtlSdrStreamer.start()");
 
         trackBufferSize = AudioTrack.getMinBufferSize(AUDIO_SAMPLE_RATE, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_8BIT);
-        iqBufferSize = trackBufferSize * 40 * 2;
+        iqBufferSize = trackBufferSize * SAMPLE_RATIO * 2;
 
         audioTrack = new AudioTrack(AudioManager.STREAM_MUSIC, AUDIO_SAMPLE_RATE, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_8BIT, trackBufferSize, AudioTrack.MODE_STREAM);
 
@@ -73,19 +75,19 @@ public class RtlSdrStreamer {
                         for (int j = 0; j < trackBufferSize; j++) {
                             double sumI = 0;
                             double sumQ = 0;
-                            for (int k = 0; k < 40; k++) {
-                                sumI += (double) (((iqBuffer[(j * 80) + (k * 2)] & 0xFF) - 127.5) / 127.5);
-                                sumQ += (double) (((iqBuffer[(j * 80) + (k * 2) + 1] & 0xFF) - 127.5) / 127.5);
+                            for (int k = 0; k < SAMPLE_RATIO; k++) {
+                                sumI += (double) (((iqBuffer[(j * (SAMPLE_RATIO * 2)) + (k * 2)] & 0xFF) - 128.0) / 128.0);
+                                sumQ += (double) (((iqBuffer[(j * (SAMPLE_RATIO * 2)) + (k * 2) + 1] & 0xFF) - 128.0) / 128.0);
                             }
 
-                            double i = sumI / 40;
-                            double q = sumQ / 40;
+                            double i = (sumI / SAMPLE_RATIO);
+                            double q = (sumQ / SAMPLE_RATIO);
                             double a = (i * i) + (q * q);
+                            double v = (128.0 + ((i + q) * 128.0));
+                            if(a < squelch) v = 128.0;
 
-                            byte v = (byte) (127 + ((i + q) * 127));
-                            if(a < squelch) v = 127;
-                            //if(Math.abs(v - 128) < 10) v = 127;
-                            trackBuffer[j] = v;
+                            v = 128 + ((v - 128) * softwareGain);
+                            trackBuffer[j] = (byte)v;
                         }
 
                         audioTrack.write(trackBuffer, 0, trackBufferSize);
@@ -121,6 +123,11 @@ public class RtlSdrStreamer {
 
     public boolean setGain(int gain) {
         return sendCommand(COMMAND_SET_GAIN, gain);
+    }
+
+    public boolean setSoftwareGain(float gain) {
+        this.softwareGain = gain;
+        return true;
     }
 
     public boolean setSquelch(int squelch) {
