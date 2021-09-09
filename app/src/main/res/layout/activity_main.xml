@@ -41,12 +41,22 @@
 
 		<LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
 			<TextView android:id="@+id/text_software_gain" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="20" android:layout_margin="5dp" android:text="Software Gain" />
-			<SeekBar android:id="@+id/seek_software_gain"  android:layout_width="0dp" android:layout_height="wrap_content" android:layout_margin="5dp" android:layout_weight="80" android:min="100" android:max="1500" />
+			<SeekBar android:id="@+id/seek_software_gain"  android:layout_width="0dp" android:layout_height="wrap_content" android:layout_margin="5dp" android:layout_weight="80" android:min="1" android:max="100" />
+		</LinearLayout>
+
+		<LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+			<TextView android:id="@+id/text_attenuation" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="20" android:layout_margin="5dp" android:text="Attenuator" />
+			<SeekBar android:id="@+id/seek_attenuation"  android:layout_width="0dp" android:layout_height="wrap_content" android:layout_margin="5dp" android:layout_weight="80" android:min="1" android:max="10" />
 		</LinearLayout>
 
 		<LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
 			<TextView android:id="@+id/text_squelch" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="20" android:layout_margin="5dp" android:text="Squelch" />
-			<SeekBar android:id="@+id/seek_squelch"  android:layout_width="0dp" android:layout_height="wrap_content" android:layout_margin="5dp" android:layout_weight="80" android:max="200"/> 
+			<SeekBar android:id="@+id/seek_squelch"  android:layout_width="0dp" android:layout_height="wrap_content" android:layout_margin="5dp" android:layout_weight="80" android:max="100"/> 
+		</LinearLayout>
+
+		<LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+			<TextView android:id="@+id/text_lowpass" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="20" android:layout_margin="5dp" android:text="Low Pass" />
+			<Switch android:id="@+id/switch_lowpass"  android:layout_width="0dp" android:layout_height="wrap_content" android:layout_margin="5dp" android:layout_weight="80" /> 
 		</LinearLayout>
 
 		<LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">

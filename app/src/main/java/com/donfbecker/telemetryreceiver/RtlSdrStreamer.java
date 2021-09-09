@@ -33,12 +33,17 @@ public class RtlSdrStreamer {
     private int iqBufferSize;
 
     private float softwareGain = 1;
+    private float attenuation = 1;
     private float squelch = 0;
+    private boolean filterEnabled = false;
+
+    private LowPassFilter filter;
 
     private ArrayBlockingQueue<byte[]> commandQueue = null;
 
     public RtlSdrStreamer() {
         commandQueue = new ArrayBlockingQueue<byte[]>(100);
+        filter = new LowPassFilter();
     }
 
     public boolean isRunning() {
@@ -48,13 +53,15 @@ public class RtlSdrStreamer {
     public boolean start() {
         Log.d("DEBUG", "RtlSdrStreamer.start()");
 
-        trackBufferSize = AudioTrack.getMinBufferSize(AUDIO_SAMPLE_RATE, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_8BIT);
+        trackBufferSize = AudioTrack.getMinBufferSize(AUDIO_SAMPLE_RATE, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT);
         iqBufferSize = trackBufferSize * SAMPLE_RATIO * 2;
 
-        audioTrack = new AudioTrack(AudioManager.STREAM_MUSIC, AUDIO_SAMPLE_RATE, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_8BIT, trackBufferSize, AudioTrack.MODE_STREAM);
+        Log.d("DEBUG", "trackBufferSize = " + trackBufferSize);
+
+        audioTrack = new AudioTrack(AudioManager.STREAM_MUSIC, AUDIO_SAMPLE_RATE, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT, trackBufferSize, AudioTrack.MODE_STREAM);
 
         new Thread() {
-            byte[] trackBuffer = new byte[trackBufferSize];
+            short[] trackBuffer = new short[trackBufferSize];
             byte[] iqBuffer = new byte[iqBufferSize];
 
             public void run() {
@@ -65,7 +72,7 @@ public class RtlSdrStreamer {
 
                     // Let's try disabling AGC
                     setAGCMode(false);
-                    setGainMode(false);
+                    setGainMode(true);
 
                     audioTrack.play();
                     stayAlive = true;
@@ -76,18 +83,20 @@ public class RtlSdrStreamer {
                             double sumI = 0;
                             double sumQ = 0;
                             for (int k = 0; k < SAMPLE_RATIO; k++) {
-                                sumI += (double) (((iqBuffer[(j * (SAMPLE_RATIO * 2)) + (k * 2)] & 0xFF) - 128.0) / 128.0);
-                                sumQ += (double) (((iqBuffer[(j * (SAMPLE_RATIO * 2)) + (k * 2) + 1] & 0xFF) - 128.0) / 128.0);
+                                sumI += (double) (((iqBuffer[(j * (SAMPLE_RATIO * 2)) + (k * 2)] & 0xFF) - 127.5) / 127.5);
+                                sumQ += (double) (((iqBuffer[(j * (SAMPLE_RATIO * 2)) + (k * 2) + 1] & 0xFF) - 127.5) / 127.5);
                             }
 
                             double i = (sumI / SAMPLE_RATIO);
                             double q = (sumQ / SAMPLE_RATIO);
-                            double a = (i * i) + (q * q);
-                            double v = (128.0 + ((i + q) * 128.0));
-                            if(a < squelch) v = 128.0;
+                            double a = ((i * i) + (q * q));
+                            //float v = (float)(i * q);
+                            float v = (float)((i + q) * (softwareGain / attenuation));
+                            if(filterEnabled) v = filter.filter(v);
 
-                            v = 128 + ((v - 128) * softwareGain);
-                            trackBuffer[j] = (byte)v;
+                            if(a < squelch) v = 0f;
+
+                            trackBuffer[j] = (short)(v * 32767);
                         }
 
                         audioTrack.write(trackBuffer, 0, trackBufferSize);
@@ -126,13 +135,23 @@ public class RtlSdrStreamer {
     }
 
     public boolean setSoftwareGain(float gain) {
-        this.softwareGain = gain;
+        this.softwareGain = gain * 1.0f;
+        return true;
+    }
+
+    public boolean setAttenuation(float attenuation) {
+        this.attenuation = attenuation;
         return true;
     }
 
     public boolean setSquelch(int squelch) {
         this.squelch = (float)squelch / 10000.0f;
         Log.d("DEBUG", "Squelch is " + this.squelch);
+        return true;
+    }
+
+    public boolean setFilterEnabled(boolean enabled) {
+        this.filterEnabled = enabled;
         return true;
     }
 

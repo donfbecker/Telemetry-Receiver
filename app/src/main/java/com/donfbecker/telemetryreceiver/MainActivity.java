@@ -9,7 +9,9 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.CompoundButton;
 import android.widget.SeekBar;
+import android.widget.Switch;
 import android.widget.TextView;
 
 import com.donfbecker.telemetryreceiver.R;
@@ -68,7 +70,23 @@ public class MainActivity extends AppCompatActivity {
                     @Override
                     public void onProgressChanged(SeekBar seekBar, int gain, boolean b) {
                         //set gain to decimal values between 1 and 5.
-                        setSoftwareGain(gain/100.0f);
+                        setSoftwareGain(gain);
+                    }
+
+                    @Override
+                    public void onStartTrackingTouch(SeekBar seekBar) { }
+                    @Override
+                    public void onStopTrackingTouch(SeekBar seekBar) { }
+                }
+        );
+
+        final SeekBar attenuationSeekBar = findViewById(R.id.seek_attenuation);
+        attenuationSeekBar.setOnSeekBarChangeListener(
+                new SeekBar.OnSeekBarChangeListener() {
+                    @Override
+                    public void onProgressChanged(SeekBar seekBar, int attenuation, boolean b) {
+                        //set gain to decimal values between 1 and 5.
+                        setAttenuation(attenuation);
                     }
 
                     @Override
@@ -90,6 +108,16 @@ public class MainActivity extends AppCompatActivity {
                     public void onStartTrackingTouch(SeekBar seekBar) { }
                     @Override
                     public void onStopTrackingTouch(SeekBar seekBar) { }
+                }
+        );
+
+        final Switch lowPassSwitch = findViewById(R.id.switch_lowpass);
+        lowPassSwitch.setOnCheckedChangeListener(
+                new Switch.OnCheckedChangeListener() {
+                    @Override
+                    public void onCheckedChanged(CompoundButton view, boolean enabled) {
+                        streamer.setFilterEnabled(enabled);
+                    }
                 }
         );
 
@@ -141,6 +169,10 @@ public class MainActivity extends AppCompatActivity {
 
     private void setSoftwareGain(float gain) {
         streamer.setSoftwareGain(gain);
+    }
+
+    private void setAttenuation(float attenuation) {
+        streamer.setAttenuation(attenuation);
     }
 
     private void setSquelch(int squelch) {
