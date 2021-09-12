@@ -102,6 +102,8 @@ public class RtlSdrStreamer {
                             if(filterEnabled) v = filter.filter(v);
 
                             if(a < squelch) v = 0f;
+                            if(v > 1) v = 1;
+                            if(v < -1) v = -1;
 
                             trackBuffer[j] = (short)(v * 32767);
                         }
