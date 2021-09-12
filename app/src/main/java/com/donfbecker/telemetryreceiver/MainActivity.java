@@ -121,6 +121,16 @@ public class MainActivity extends AppCompatActivity {
                 }
         );
 
+        final Switch biasTeeSwitch = findViewById(R.id.switch_bias_tee);
+        biasTeeSwitch.setOnCheckedChangeListener(
+                new Switch.OnCheckedChangeListener() {
+                    @Override
+                    public void onCheckedChanged(CompoundButton view, boolean enabled) {
+                        streamer.setBiasTee(enabled);
+                    }
+                }
+        );
+
         textFrequency = findViewById(R.id.text_frequency);
         textFrequency.setText(String.format("%.6f", (currentFrequency / 1000000f)));
     }

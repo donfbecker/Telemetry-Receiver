@@ -12,17 +12,24 @@ import android.media.AudioTrack;
 import android.util.Log;
 
 public class RtlSdrStreamer {
-    public static final int IQ_SAMPLE_RATE = 1920000;
+    // Sample rate must be between 225001 and 300000 or 900001 and 3200000
+    public static final int IQ_SAMPLE_RATE = 240000;
     public static final int AUDIO_SAMPLE_RATE = 48000;
-    public static final int SAMPLE_RATIO = 40;
+    public static final int SAMPLE_RATIO = 5;
 
-    public static final byte COMMAND_SET_FREQUENCY 	= 0x01;
-    public static final byte COMMAND_SET_SAMPLERATE = 0x02;
-    public static final byte COMMAND_SET_GAIN_MODE	= 0x03;
-    public static final byte COMMAND_SET_GAIN 		= 0x04;
-    public static final byte COMMAND_SET_FREQ_CORR 	= 0x05;
-    public static final byte COMMAND_SET_IFGAIN 	= 0x06;
-    public static final byte COMMAND_SET_AGC_MODE 	= 0x08;
+    public static final byte COMMAND_SET_FREQUENCY        = 0x01;
+    public static final byte COMMAND_SET_SAMPLERATE       = 0x02;
+    public static final byte COMMAND_SET_GAIN_MODE        = 0x03;
+    public static final byte COMMAND_SET_GAIN             = 0x04;
+    public static final byte COMMAND_SET_FREQ_CORR        = 0x05;
+    public static final byte COMMAND_SET_IFGAIN           = 0x06;
+    public static final byte COMMAND_SET_AGC_MODE         = 0x08;
+    public static final byte COMMAND_SET_DIRECT_SAMPLING  = 0x09;
+    public static final byte COMMAND_SET_TUNING_OFFSET    = 0x0a;
+    public static final byte COMMAND_SET_RTL_XTAL         = 0x0b;
+    public static final byte COMMAND_SET_TUNER_XTAL       = 0x0c;
+    public static final byte COMMAND_SET_TUNER_GAIN_BY_ID = 0x0d;
+    public static final byte COMMAND_SET_BIAS_TEE         = 0x0e;
 
     private Socket connection;
     private InputStream stream;
@@ -126,6 +133,14 @@ public class RtlSdrStreamer {
         return sendCommand(COMMAND_SET_FREQUENCY, frequency);
     }
 
+    public boolean setTunerOffset(int offset) {
+        return sendCommand(COMMAND_SET_TUNING_OFFSET, offset);
+    }
+
+    public boolean setFrequencyCorrection(int correction) {
+        return sendCommand(COMMAND_SET_FREQ_CORR, correction);
+    }
+
     public boolean setGainMode(boolean manual) {
         return sendCommand(COMMAND_SET_GAIN_MODE, manual ? 0x01 : 0x00);
     }
@@ -157,6 +172,10 @@ public class RtlSdrStreamer {
 
     public boolean setAGCMode(boolean enabled) {
         return sendCommand(COMMAND_SET_AGC_MODE, enabled ? 0x01 : 0x00);
+    }
+
+    public boolean setBiasTee(boolean enabled) {
+        return sendCommand(COMMAND_SET_BIAS_TEE, enabled ? 0x01 : 0x00);
     }
 
     private boolean sendCommand(byte command, int arg) {
