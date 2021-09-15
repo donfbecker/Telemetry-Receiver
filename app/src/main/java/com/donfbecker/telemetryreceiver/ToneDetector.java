@@ -5,14 +5,17 @@ public class ToneDetector {
     private int bufferSize;
     private int minLength;
     private int maxLength;
+    private int minDuration;
 
     private boolean isPositive = true;
     private int toneSamples = 0;
+    private int durationSamples = 0;
 
-    public ToneDetector(double sampleRate, double lowFrequency, double highFrequency) {
-        minLength = (int)Math.floor(sampleRate * (1 / highFrequency / 2));
-        maxLength = (int)Math.ceil(sampleRate * (1 / lowFrequency / 2));
-        bufferSize = maxLength;
+    public ToneDetector(double sampleRate, double lowFrequency, double highFrequency, int minDurationMS) {
+        minLength   = (int)Math.floor(sampleRate * (1 / highFrequency / 2));
+        maxLength   = (int)Math.ceil(sampleRate * (1 / lowFrequency / 2));
+        minDuration = (int)Math.floor((sampleRate / 1000) * minDurationMS);
+        bufferSize  = Math.max(maxLength, minDuration);
 
         buffer = new float[bufferSize];
     }
@@ -23,7 +26,12 @@ public class ToneDetector {
         if((isPositive && input < 0) || (!isPositive && input > 0)) {
             // crossed over 0
             if(toneSamples < minLength || toneSamples > maxLength) {
-                for(i = (bufferSize - toneSamples); i < bufferSize; i++) buffer[i] = 0;
+                if(durationSamples < minDuration) {
+                    int n = Math.max(durationSamples, toneSamples);
+                    for (i = (bufferSize - n); i < bufferSize; i++) buffer[i] = 0;
+                }
+
+                durationSamples = 0;
             }
 
             toneSamples = 0;
@@ -32,6 +40,7 @@ public class ToneDetector {
 
         for(i = 0; i < bufferSize - 1; i++) buffer[i] = buffer[i + 1];
         toneSamples++;
+        durationSamples++;
         buffer[bufferSize - 1] = input;
         return buffer[0];
     }

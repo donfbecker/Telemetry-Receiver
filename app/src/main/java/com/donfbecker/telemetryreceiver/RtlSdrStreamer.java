@@ -53,7 +53,7 @@ public class RtlSdrStreamer {
     public RtlSdrStreamer() {
         commandQueue = new ArrayBlockingQueue<byte[]>(100);
         filter = new LowPassFilter();
-        detector = new ToneDetector(48000, 200, 900);
+        detector = new ToneDetector(48000, 200, 900, 10);
     }
 
     public boolean isRunning() {
