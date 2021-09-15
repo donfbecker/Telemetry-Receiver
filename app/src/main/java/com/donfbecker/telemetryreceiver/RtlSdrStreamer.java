@@ -43,14 +43,17 @@ public class RtlSdrStreamer {
     private float attenuation = 1;
     private float squelch = 0;
     private boolean filterEnabled = false;
+    private boolean detectorEnabled = false;
 
     private LowPassFilter filter;
+    private ToneDetector detector;
 
     private ArrayBlockingQueue<byte[]> commandQueue = null;
 
     public RtlSdrStreamer() {
         commandQueue = new ArrayBlockingQueue<byte[]>(100);
         filter = new LowPassFilter();
+        detector = new ToneDetector(48000, 200, 900);
     }
 
     public boolean isRunning() {
@@ -100,6 +103,7 @@ public class RtlSdrStreamer {
                             //float v = (float)(i * q);
                             float v = (float)((i + q) * (softwareGain / attenuation));
                             if(filterEnabled) v = filter.filter(v);
+                            if(detectorEnabled) v = detector.filter(v);
 
                             if(a < squelch) v = 0f;
                             if(v > 1) v = 1;
@@ -169,6 +173,11 @@ public class RtlSdrStreamer {
 
     public boolean setFilterEnabled(boolean enabled) {
         this.filterEnabled = enabled;
+        return true;
+    }
+
+    public boolean setDetectorEnabled(boolean enabled) {
+        this.detectorEnabled = enabled;
         return true;
     }
 

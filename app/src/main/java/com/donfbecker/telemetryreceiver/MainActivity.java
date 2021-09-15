@@ -121,6 +121,16 @@ public class MainActivity extends AppCompatActivity {
                 }
         );
 
+        final Switch toneDetectorSwitch = findViewById(R.id.switch_tone_detector);
+        toneDetectorSwitch.setOnCheckedChangeListener(
+                new Switch.OnCheckedChangeListener() {
+                    @Override
+                    public void onCheckedChanged(CompoundButton view, boolean enabled) {
+                        streamer.setDetectorEnabled(enabled);
+                    }
+                }
+        );
+
         final Switch biasTeeSwitch = findViewById(R.id.switch_bias_tee);
         biasTeeSwitch.setOnCheckedChangeListener(
                 new Switch.OnCheckedChangeListener() {
