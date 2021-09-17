@@ -1,5 +1,6 @@
 package com.donfbecker.telemetryreceiver;
 
+import java.io.BufferedInputStream;
 import java.io.DataInputStream;
 import java.io.InputStream;
 import java.lang.Thread;
@@ -13,9 +14,9 @@ import android.util.Log;
 
 public class RtlSdrStreamer {
     // Sample rate must be between 225001 and 300000 or 900001 and 3200000
-    public static final int IQ_SAMPLE_RATE = 240000;
+    public static final int IQ_SAMPLE_RATE = 1920000;
     public static final int AUDIO_SAMPLE_RATE = 48000;
-    public static final int SAMPLE_RATIO = 5;
+    public static final int SAMPLE_RATIO = 40;
 
     public static final byte COMMAND_SET_FREQUENCY        = 0x01;
     public static final byte COMMAND_SET_SAMPLERATE       = 0x02;
@@ -39,9 +40,9 @@ public class RtlSdrStreamer {
     private int trackBufferSize;
     private int iqBufferSize;
 
-    private float softwareGain = 1;
-    private float attenuation = 1;
-    private float squelch = 0;
+    private double softwareGain = 1;
+    private double attenuation = 1;
+    private double squelch = 0;
     private boolean filterEnabled = false;
     private boolean detectorEnabled = false;
 
@@ -53,7 +54,7 @@ public class RtlSdrStreamer {
     public RtlSdrStreamer() {
         commandQueue = new ArrayBlockingQueue<byte[]>(100);
         filter = new LowPassFilter();
-        detector = new ToneDetector(48000, 200, 900, 10);
+        detector = new ToneDetector(48000, 200, 2000, 10);
     }
 
     public boolean isRunning() {
@@ -63,10 +64,11 @@ public class RtlSdrStreamer {
     public boolean start() {
         Log.d("DEBUG", "RtlSdrStreamer.start()");
 
-        trackBufferSize = AudioTrack.getMinBufferSize(AUDIO_SAMPLE_RATE, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT);
+        trackBufferSize = 300; //AudioTrack.getMinBufferSize(AUDIO_SAMPLE_RATE, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT);
         iqBufferSize = trackBufferSize * SAMPLE_RATIO * 2;
 
         Log.d("DEBUG", "trackBufferSize = " + trackBufferSize);
+        Log.d("DEBUG", "iqBufferSize = " + iqBufferSize);
 
         audioTrack = new AudioTrack(AudioManager.STREAM_MUSIC, AUDIO_SAMPLE_RATE, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT, trackBufferSize, AudioTrack.MODE_STREAM);
 
@@ -78,7 +80,7 @@ public class RtlSdrStreamer {
                 try {
                     connection = new Socket("127.0.0.1", 1234);
                     stream = connection.getInputStream();
-                    DataInputStream input = new DataInputStream(stream);
+                    DataInputStream input = new DataInputStream(new BufferedInputStream(stream));
 
                     // Let's try disabling AGC
                     setAGCMode(false);
@@ -89,19 +91,25 @@ public class RtlSdrStreamer {
                     while (stayAlive) {
                         input.readFully(iqBuffer);
 
+                        double sumI;
+                        double sumQ;
+                        double i;
+                        double q;
+                        double a;
+                        double v;
+
                         for (int j = 0; j < trackBufferSize; j++) {
-                            double sumI = 0;
-                            double sumQ = 0;
+                            sumI = 0;
+                            sumQ = 0;
                             for (int k = 0; k < SAMPLE_RATIO; k++) {
-                                sumI += (double) (((iqBuffer[(j * (SAMPLE_RATIO * 2)) + (k * 2)] & 0xFF) - 127.5) / 127.5);
-                                sumQ += (double) (((iqBuffer[(j * (SAMPLE_RATIO * 2)) + (k * 2) + 1] & 0xFF) - 127.5) / 127.5);
+                                sumI += (double)(((iqBuffer[(j * (SAMPLE_RATIO * 2)) + (k * 2)] & 0xFF) - 127.5) / 127.5);
+                                sumQ += (double)(((iqBuffer[(j * (SAMPLE_RATIO * 2)) + (k * 2) + 1] & 0xFF) - 127.5) / 127.5);
                             }
 
-                            double i = (sumI / SAMPLE_RATIO);
-                            double q = (sumQ / SAMPLE_RATIO);
-                            double a = ((i * i) + (q * q));
-                            //float v = (float)(i * q);
-                            float v = (float)((i + q) * (softwareGain / attenuation));
+                            i = (sumI / SAMPLE_RATIO);
+                            q = (sumQ / SAMPLE_RATIO);
+                            a = ((i * i) + (q * q));
+                            v = ((i + q) * (softwareGain / attenuation));
                             if(filterEnabled) v = filter.filter(v);
                             if(detectorEnabled) v = detector.filter(v);
 
