@@ -5,10 +5,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import android.annotation.SuppressLint;
 import android.content.pm.ActivityInfo;
 import android.content.Intent;
-import android.hardware.Sensor;
-import android.hardware.SensorEvent;
-import android.hardware.SensorEventListener;
-import android.hardware.SensorManager;
+
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
@@ -24,7 +21,7 @@ import android.widget.TextView;
 
 import com.donfbecker.telemetryreceiver.R;
 
-public class MainActivity extends AppCompatActivity implements View.OnClickListener, SeekBar.OnSeekBarChangeListener, Switch.OnCheckedChangeListener, SensorEventListener {
+public class MainActivity extends AppCompatActivity implements View.OnClickListener, SeekBar.OnSeekBarChangeListener, Switch.OnCheckedChangeListener {
 
     private RtlSdrStreamer streamer;
 
@@ -36,17 +33,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     private static PulseGaugeView pulseGauge;
     private static PulseCompassView pulseCompass;
-
-    private SensorManager sensorManager;
-    private Sensor sensorAccelerometer;
-    private Sensor sensorMagneticField;
-
-    private float[] floatGravity = new float[3];
-    private float[] floatGeoMagnetic = new float[3];
-
-    private float[] floatOrientation = new float[3];
-    private float[] floatRotationMatrix = new float[9];
-
 
     public static Handler handler = new Handler(Looper.getMainLooper()) {
         @Override
@@ -105,12 +91,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         pulseGauge = findViewById(R.id.pulse_gauge);
         pulseCompass = findViewById(R.id.pulse_compass);
 
-        sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
-        sensorAccelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
-        sensorMagneticField = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
 
-        sensorManager.registerListener(this, sensorAccelerometer, SensorManager.SENSOR_DELAY_NORMAL);
-        sensorManager.registerListener(this, sensorMagneticField, SensorManager.SENSOR_DELAY_NORMAL);
     }
 
     //
@@ -160,7 +141,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     // Switch events
     //
     public void onCheckedChanged(CompoundButton view, boolean enabled) {
-        switch(view.getId()) {
+        switch (view.getId()) {
             case R.id.switch_bias_tee:
                 streamer.setBiasTee(enabled);
                 break;
@@ -171,27 +152,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 streamer.setDetectorEnabled(enabled);
                 break;
         }
-    }
-
-    //
-    // Sensor eents
-    //
-    public void onAccuracyChanged(Sensor sensor, int accuracy) {
-    }
-
-    public void onSensorChanged(SensorEvent event) {
-        if(event.sensor == sensorAccelerometer) {
-            floatGravity = event.values;
-        }
-
-        if(event.sensor == sensorMagneticField) {
-            floatGeoMagnetic = event.values;
-        }
-        SensorManager.getRotationMatrix(floatRotationMatrix, null, floatGravity, floatGeoMagnetic);
-        SensorManager.getOrientation(floatRotationMatrix, floatOrientation);
-
-        double degrees = (double)(Math.toDegrees(floatOrientation[0]) + 360) % 360;
-        pulseCompass.setBearing(degrees);
     }
 
     //

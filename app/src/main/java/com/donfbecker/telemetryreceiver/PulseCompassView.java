@@ -5,12 +5,23 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Path;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.View;
 
-public class PulseCompassView extends View {
+public class PulseCompassView extends View implements SensorEventListener {
     private final int SIZE = 360;
+    private final int BEARING_AVERAGE_SIZE = 50;
+
+    private SensorManager sensorManager;
+    private Sensor sensorRotation;
+
+    private float[] orientationMatrix = new float[3];
+    private float[] rotationMatrix = new float[9];
 
     private double[] pulses;
     private double[] bearings;
@@ -20,7 +31,12 @@ public class PulseCompassView extends View {
         super(context, attributes);
 
         pulses = new double[SIZE];
-        bearings = new double[5];
+        bearings = new double[BEARING_AVERAGE_SIZE];
+
+        sensorManager = (SensorManager)context.getSystemService(Context.SENSOR_SERVICE);
+        sensorRotation      = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
+        sensorManager.registerListener(this, sensorRotation, SensorManager.SENSOR_DELAY_NORMAL);
+
     }
 
     @Override
@@ -74,15 +90,12 @@ public class PulseCompassView extends View {
         setMeasuredDimension(d, d);
     }
 
+    public int getBearing() {
+        return currentBearing;
+    }
+
     public void setBearing(double bearing) {
-        double sum = 0;
-        for(int i = 5-1; i > 0; i--) {
-            sum += bearings[i];
-            bearings[i] = bearings[i - 1];
-        }
-        sum += bearing;
-        bearings[0] = bearing;
-        currentBearing = (int)Math.round(sum/5);
+        currentBearing = (int)Math.round(bearing);
         invalidate();
     }
 
@@ -95,5 +108,25 @@ public class PulseCompassView extends View {
     public void reset() {
         for(int i = 0; i < SIZE; i++) pulses[i] = 0;
         invalidate();
+    }
+
+    //
+    // Sensor events
+    //
+    public void onAccuracyChanged(Sensor sensor, int accuracy) {
+    }
+
+    public void onSensorChanged(SensorEvent event) {
+        switch(event.sensor.getType()) {
+            case Sensor.TYPE_ROTATION_VECTOR:
+                SensorManager.getRotationMatrixFromVector(rotationMatrix, event.values);
+                SensorManager.getOrientation(rotationMatrix, orientationMatrix);
+
+                double degrees = (double)(Math.toDegrees(orientationMatrix[0]) + 360) % 360;
+                setBearing(degrees);
+                break;
+        }
+
+
     }
 }
