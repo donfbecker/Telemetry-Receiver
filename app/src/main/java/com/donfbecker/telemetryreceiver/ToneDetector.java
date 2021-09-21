@@ -1,8 +1,13 @@
 package com.donfbecker.telemetryreceiver;
 
+import android.os.Handler;
+import android.os.Looper;
+import android.os.Message;
 import android.util.Log;
 
 public class ToneDetector {
+    public static final int MESSAGE_TONE_DETECTED = 10001;
+
     private int sampleRate;
     private double[] buffer;
     private int bufferSize;
@@ -16,7 +21,9 @@ public class ToneDetector {
 
     private int position = 0;
     private int index = 0;
+
     private int crossCount = 0;
+    private double maxAmplitude = 0;
 
     public ToneDetector(int sampleRate, double lowFrequency, double highFrequency, int minDurationMS) {
         this.sampleRate = sampleRate;
@@ -29,7 +36,7 @@ public class ToneDetector {
         buffer = new double[bufferSize];
     }
 
-    public double filter(double input) {
+    public double filter(double input, double amplitude) {
         int i;
 
         if((isPositive && input < 0) || (!isPositive && input > 0)) {
@@ -47,10 +54,12 @@ public class ToneDetector {
                 } else {
                     double t = (durationSamples / (sampleRate / 1.0));
                     double f = (crossCount / 2.0) / t;
-                    Log.d("DEBUG", t + "s tone detected at " + f + "hz.");
+                    Log.d("DEBUG", String.format("%.0fhz tone detected lasting %.1fms with amplitude of %.4f", f, t*1000, maxAmplitude));
+                    MainActivity.handler.sendMessageDelayed(MainActivity.handler.obtainMessage(ToneDetector.MESSAGE_TONE_DETECTED, (int)f, (int)(maxAmplitude*1000000)), (int)t);
                 }
 
                 durationSamples = 0;
+                maxAmplitude = 0;
                 crossCount = 0;
             }
 
@@ -58,6 +67,8 @@ public class ToneDetector {
             isPositive = !isPositive;
         }
 
+        //if(Math.abs(input) > maxAmplitude) maxAmplitude = Math.abs(input);
+        if(amplitude > maxAmplitude) maxAmplitude = amplitude;
         toneSamples++;
         durationSamples++;
 

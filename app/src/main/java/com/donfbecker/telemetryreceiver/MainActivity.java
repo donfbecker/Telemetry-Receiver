@@ -2,10 +2,18 @@ package com.donfbecker.telemetryreceiver;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.annotation.SuppressLint;
 import android.content.pm.ActivityInfo;
 import android.content.Intent;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.Message;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
@@ -16,7 +24,8 @@ import android.widget.TextView;
 
 import com.donfbecker.telemetryreceiver.R;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements View.OnClickListener, SeekBar.OnSeekBarChangeListener, Switch.OnCheckedChangeListener, SensorEventListener {
+
     private RtlSdrStreamer streamer;
 
     private int currentFrequency = 148500000;
@@ -24,6 +33,36 @@ public class MainActivity extends AppCompatActivity {
     private int currentSquelch = 0;
 
     private TextView textFrequency;
+
+    private static PulseGaugeView pulseGauge;
+    private static PulseCompassView pulseCompass;
+
+    private SensorManager sensorManager;
+    private Sensor sensorAccelerometer;
+    private Sensor sensorMagneticField;
+
+    private float[] floatGravity = new float[3];
+    private float[] floatGeoMagnetic = new float[3];
+
+    private float[] floatOrientation = new float[3];
+    private float[] floatRotationMatrix = new float[9];
+
+
+    public static Handler handler = new Handler(Looper.getMainLooper()) {
+        @Override
+        public void handleMessage(Message message) {
+            switch(message.what) {
+                case ToneDetector.MESSAGE_TONE_DETECTED:
+                    pulseGauge.addPulse(message.arg2 / 1000000.0);
+                    pulseCompass.addPulse(message.arg2 / 1000000.0);
+                    break;
+
+                default:
+                    Log.d("DEBUG", "Unknown message: " + message.what);
+                    break;
+            }
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -34,116 +73,130 @@ public class MainActivity extends AppCompatActivity {
         streamer = new RtlSdrStreamer();
 
         final Button startButton = findViewById(R.id.button_start);
-        startButton.setOnClickListener(new View.OnClickListener() {
-            public void onClick(View v) {
-                Log.d("DEBUG", "iqsrc://-a 127.0.0.1 -p 1234 -s " + RtlSdrStreamer.IQ_SAMPLE_RATE);
-                Intent intent = new Intent(Intent.ACTION_VIEW).setData(Uri.parse("iqsrc://-a 127.0.0.1 -p 1234 -g 0 -f 148420440 -s " + RtlSdrStreamer.IQ_SAMPLE_RATE));
-                startActivityForResult(intent, 1234);
-            }
-        });
+        startButton.setOnClickListener(this);
 
         final Button stopButton = findViewById(R.id.button_stop);
-        stopButton.setOnClickListener(new View.OnClickListener() {
-            public void onClick(View v) {
-                streamer.stop();
-            }
-        });
+        stopButton.setOnClickListener(this);
 
         final SeekBar gainSeekBar = findViewById(R.id.seek_gain);
-        gainSeekBar.setOnSeekBarChangeListener(
-                new SeekBar.OnSeekBarChangeListener() {
-                    @Override
-                    public void onProgressChanged(SeekBar seekBar, int gain, boolean b) {
-                        setGain(gain);
-                    }
-
-                    @Override
-                    public void onStartTrackingTouch(SeekBar seekBar) { }
-                    @Override
-                    public void onStopTrackingTouch(SeekBar seekBar) { }
-                }
-        );
+        gainSeekBar.setOnSeekBarChangeListener(this);
 
         final SeekBar softwareGainSeekBar = findViewById(R.id.seek_software_gain);
-        softwareGainSeekBar.setOnSeekBarChangeListener(
-                new SeekBar.OnSeekBarChangeListener() {
-                    @Override
-                    public void onProgressChanged(SeekBar seekBar, int gain, boolean b) {
-                        //set gain to decimal values between 1 and 5.
-                        setSoftwareGain(gain);
-                    }
-
-                    @Override
-                    public void onStartTrackingTouch(SeekBar seekBar) { }
-                    @Override
-                    public void onStopTrackingTouch(SeekBar seekBar) { }
-                }
-        );
+        softwareGainSeekBar.setOnSeekBarChangeListener(this);
 
         final SeekBar attenuationSeekBar = findViewById(R.id.seek_attenuation);
-        attenuationSeekBar.setOnSeekBarChangeListener(
-                new SeekBar.OnSeekBarChangeListener() {
-                    @Override
-                    public void onProgressChanged(SeekBar seekBar, int attenuation, boolean b) {
-                        //set gain to decimal values between 1 and 5.
-                        setAttenuation(attenuation);
-                    }
-
-                    @Override
-                    public void onStartTrackingTouch(SeekBar seekBar) { }
-                    @Override
-                    public void onStopTrackingTouch(SeekBar seekBar) { }
-                }
-        );
+        attenuationSeekBar.setOnSeekBarChangeListener(this);
 
         final SeekBar squelchSeekBar = findViewById(R.id.seek_squelch);
-        squelchSeekBar.setOnSeekBarChangeListener(
-                new SeekBar.OnSeekBarChangeListener() {
-                    @Override
-                    public void onProgressChanged(SeekBar seekBar, int squelch, boolean b) {
-                        setSquelch(squelch);
-                    }
-
-                    @Override
-                    public void onStartTrackingTouch(SeekBar seekBar) { }
-                    @Override
-                    public void onStopTrackingTouch(SeekBar seekBar) { }
-                }
-        );
+        squelchSeekBar.setOnSeekBarChangeListener(this);
 
         final Switch lowPassSwitch = findViewById(R.id.switch_lowpass);
-        lowPassSwitch.setOnCheckedChangeListener(
-                new Switch.OnCheckedChangeListener() {
-                    @Override
-                    public void onCheckedChanged(CompoundButton view, boolean enabled) {
-                        streamer.setFilterEnabled(enabled);
-                    }
-                }
-        );
+        lowPassSwitch.setOnCheckedChangeListener(this);
 
         final Switch toneDetectorSwitch = findViewById(R.id.switch_tone_detector);
-        toneDetectorSwitch.setOnCheckedChangeListener(
-                new Switch.OnCheckedChangeListener() {
-                    @Override
-                    public void onCheckedChanged(CompoundButton view, boolean enabled) {
-                        streamer.setDetectorEnabled(enabled);
-                    }
-                }
-        );
+        toneDetectorSwitch.setOnCheckedChangeListener(this);
 
         final Switch biasTeeSwitch = findViewById(R.id.switch_bias_tee);
-        biasTeeSwitch.setOnCheckedChangeListener(
-                new Switch.OnCheckedChangeListener() {
-                    @Override
-                    public void onCheckedChanged(CompoundButton view, boolean enabled) {
-                        streamer.setBiasTee(enabled);
-                    }
-                }
-        );
+        biasTeeSwitch.setOnCheckedChangeListener(this);
 
         textFrequency = findViewById(R.id.text_frequency);
         textFrequency.setText(String.format("%.6f", (currentFrequency / 1000000f)));
+
+        pulseGauge = findViewById(R.id.pulse_gauge);
+        pulseCompass = findViewById(R.id.pulse_compass);
+
+        sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
+        sensorAccelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+        sensorMagneticField = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
+
+        sensorManager.registerListener(this, sensorAccelerometer, SensorManager.SENSOR_DELAY_NORMAL);
+        sensorManager.registerListener(this, sensorMagneticField, SensorManager.SENSOR_DELAY_NORMAL);
     }
+
+    //
+    // Button events, or anything with a click I guess
+    //
+    public void onClick(View view) {
+        switch(view.getId()) {
+            case R.id.button_start:
+                Log.d("DEBUG", "iqsrc://-a 127.0.0.1 -p 1234 -s " + RtlSdrStreamer.IQ_SAMPLE_RATE);
+                Intent intent = new Intent(Intent.ACTION_VIEW).setData(Uri.parse("iqsrc://-a 127.0.0.1 -p 1234 -g 0 -f 148420440 -s " + RtlSdrStreamer.IQ_SAMPLE_RATE));
+                startActivityForResult(intent, 1234);
+                break;
+
+            case R.id.button_stop:
+                streamer.stop();
+                break;
+        }
+    }
+
+    //
+    // SeekBar events
+    //
+    public void onProgressChanged(SeekBar seekBar, int value, boolean b) {
+        switch(seekBar.getId()) {
+            case R.id.seek_gain:
+                setGain(value);
+                break;
+
+            case R.id.seek_software_gain:
+                setSoftwareGain(value);
+                break;
+
+            case R.id.seek_attenuation:
+                setAttenuation(value);
+                break;
+
+            case R.id.seek_squelch:
+                setSquelch(value);
+                break;
+        }
+    }
+
+    public void onStartTrackingTouch(SeekBar seekBar) { }
+    public void onStopTrackingTouch(SeekBar seekBar) { }
+
+    //
+    // Switch events
+    //
+    public void onCheckedChanged(CompoundButton view, boolean enabled) {
+        switch(view.getId()) {
+            case R.id.switch_bias_tee:
+                streamer.setBiasTee(enabled);
+                break;
+            case R.id.switch_lowpass:
+                streamer.setFilterEnabled(enabled);
+                break;
+            case R.id.switch_tone_detector:
+                streamer.setDetectorEnabled(enabled);
+                break;
+        }
+    }
+
+    //
+    // Sensor eents
+    //
+    public void onAccuracyChanged(Sensor sensor, int accuracy) {
+    }
+
+    public void onSensorChanged(SensorEvent event) {
+        if(event.sensor == sensorAccelerometer) {
+            floatGravity = event.values;
+        }
+
+        if(event.sensor == sensorMagneticField) {
+            floatGeoMagnetic = event.values;
+        }
+        SensorManager.getRotationMatrix(floatRotationMatrix, null, floatGravity, floatGeoMagnetic);
+        SensorManager.getOrientation(floatRotationMatrix, floatOrientation);
+
+        double degrees = (double)(Math.toDegrees(floatOrientation[0]) + 360) % 360;
+        pulseCompass.setBearing(degrees);
+    }
+
+    //
+    // Other functions
+    //
 
     public void onIncreaseFrequency(View v) {
         int n = Integer.parseInt(getResources().getResourceEntryName(v.getId()).replace("button_plus_", ""));
@@ -191,7 +244,7 @@ public class MainActivity extends AppCompatActivity {
         streamer.setSoftwareGain(gain);
     }
 
-    private void setAttenuation(float attenuation) {
+    private void setAttenuation(int attenuation) {
         streamer.setAttenuation(attenuation);
     }
 

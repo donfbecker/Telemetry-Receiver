@@ -10,6 +10,7 @@ import java.util.concurrent.ArrayBlockingQueue;
 import android.media.AudioFormat;
 import android.media.AudioManager;
 import android.media.AudioTrack;
+import android.os.Handler;
 import android.util.Log;
 
 public class RtlSdrStreamer {
@@ -106,14 +107,16 @@ public class RtlSdrStreamer {
                                 sumQ += (double)(((iqBuffer[(j * (SAMPLE_RATIO * 2)) + (k * 2) + 1] & 0xFF) - 127.5) / 127.5);
                             }
 
-                            i = (sumI / SAMPLE_RATIO);
-                            q = (sumQ / SAMPLE_RATIO);
+                            // Attenuation should be run before filtering
+                            i = (sumI / SAMPLE_RATIO) * softwareGain * attenuation;
+                            q = (sumQ / SAMPLE_RATIO) * softwareGain * attenuation;
                             a = ((i * i) + (q * q));
-                            v = ((i + q) * (softwareGain / attenuation));
-                            if(filterEnabled) v = filter.filter(v);
-                            if(detectorEnabled) v = detector.filter(v);
+                            v = (i + q);
 
+                            if(filterEnabled) v = filter.filter(v);
+                            if(detectorEnabled) v = detector.filter(v, a);
                             if(a < squelch) v = 0f;
+
                             if(v > 1) v = 1;
                             if(v < -1) v = -1;
 
@@ -164,12 +167,16 @@ public class RtlSdrStreamer {
     }
 
     public boolean setSoftwareGain(float gain) {
-        this.softwareGain = gain * 1.0f;
+        this.softwareGain = gain;
         return true;
     }
 
-    public boolean setAttenuation(float attenuation) {
-        this.attenuation = attenuation;
+    public boolean setAttenuation(int attenuation) {
+        // Attenuation should be provided between 0 and 100
+        if(attenuation < 0 || attenuation > 100) return false;
+
+        this.attenuation = 1.0 - (attenuation / 100.0);
+        Log.d("DEBUG", "attenuation=" + this.attenuation);
         return true;
     }
 
