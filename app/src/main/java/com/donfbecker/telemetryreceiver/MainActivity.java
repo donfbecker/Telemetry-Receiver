@@ -73,8 +73,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         final SeekBar attenuationSeekBar = findViewById(R.id.seek_attenuation);
         attenuationSeekBar.setOnSeekBarChangeListener(this);
 
-        final SeekBar squelchSeekBar = findViewById(R.id.seek_squelch);
-        squelchSeekBar.setOnSeekBarChangeListener(this);
+        final SeekBar magicAttenuationSeekBar = findViewById(R.id.seek_magic_attenuation);
+        magicAttenuationSeekBar.setOnSeekBarChangeListener(this);
+
+        final SeekBar magicBaseSeekBar = findViewById(R.id.seek_magic_base);
+        magicBaseSeekBar.setOnSeekBarChangeListener(this);
 
         final Switch lowPassSwitch = findViewById(R.id.switch_lowpass);
         lowPassSwitch.setOnCheckedChangeListener(this);
@@ -128,8 +131,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 setAttenuation(value);
                 break;
 
-            case R.id.seek_squelch:
-                setSquelch(value);
+            case R.id.seek_magic_attenuation:
+                streamer.setMagicAttenuation(value / 100.0);
+                break;
+
+            case R.id.seek_magic_base:
+                streamer.setMagicBase(value / 100.0);
                 break;
         }
     }
@@ -175,18 +182,22 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     public void onEnableAGC(View v) {
         streamer.setAGCMode(true);
+        pulseCompass.reset();
     }
 
     public void onDisableAGC(View v) {
         streamer.setAGCMode(false);
+        pulseCompass.reset();
     }
 
     public void onEnableManualGain(View v) {
         streamer.setGainMode(true);
+        pulseCompass.reset();
     }
 
     public void onDisableManualGain(View v) {
         streamer.setGainMode(false);
+        pulseCompass.reset();
     }
 
     private void setFrequency(int frequency) {
@@ -198,14 +209,17 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private void setGain(int gain) {
         this.currentGain = gain;
         streamer.setGain(gain);
+        pulseCompass.reset();
     }
 
     private void setSoftwareGain(float gain) {
         streamer.setSoftwareGain(gain);
+        pulseCompass.reset();
     }
 
     private void setAttenuation(int attenuation) {
         streamer.setAttenuation(attenuation);
+        pulseCompass.reset();
     }
 
     private void setSquelch(int squelch) {

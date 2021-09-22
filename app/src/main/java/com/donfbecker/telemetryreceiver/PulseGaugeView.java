@@ -30,7 +30,7 @@ public class PulseGaugeView extends View {
         float h = canvas.getHeight() / SIZE;
 
         for(int i = 0; i < SIZE; i++) {
-            canvas.drawRect(0, i * h, (float)(canvas.getWidth() * (pulses[i] / 2)), (i + 1) * h, brush);
+            canvas.drawRect(0, i * h, (float)(canvas.getWidth() * pulses[i]), (i + 1) * h, brush);
         }
     }
 

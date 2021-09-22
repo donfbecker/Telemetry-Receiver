@@ -19,6 +19,8 @@ public class RtlSdrStreamer {
     public static final int AUDIO_SAMPLE_RATE = 48000;
     public static final int SAMPLE_RATIO = 40;
 
+    public static final double SQRT_TWO = Math.sqrt(2);
+
     public static final byte COMMAND_SET_FREQUENCY        = 0x01;
     public static final byte COMMAND_SET_SAMPLERATE       = 0x02;
     public static final byte COMMAND_SET_GAIN_MODE        = 0x03;
@@ -47,6 +49,9 @@ public class RtlSdrStreamer {
     private boolean filterEnabled = false;
     private boolean detectorEnabled = false;
 
+    private double magicAttenuation = 1;
+    private double magicBase = 0.1;
+
     private LowPassFilter filter;
     private ToneDetector detector;
 
@@ -55,7 +60,7 @@ public class RtlSdrStreamer {
     public RtlSdrStreamer() {
         commandQueue = new ArrayBlockingQueue<byte[]>(100);
         filter = new LowPassFilter();
-        detector = new ToneDetector(48000, 200, 2000, 10);
+        detector = new ToneDetector(48000, 200, 1200, 10);
     }
 
     public boolean isRunning() {
@@ -110,12 +115,16 @@ public class RtlSdrStreamer {
                             // Attenuation should be run before filtering
                             i = (sumI / SAMPLE_RATIO) * softwareGain * attenuation;
                             q = (sumQ / SAMPLE_RATIO) * softwareGain * attenuation;
-                            a = ((i * i) + (q * q));
-                            v = (i + q);
+
+                            a = Math.sqrt((i * i) + (q * q)) / SQRT_TWO;
+                            v = ((i + q) / 2) ;
+
+                            double s = Math.max(0, (magicBase - ((magicBase - a) * magicAttenuation))) / a;
+                            v *= s;
 
                             if(filterEnabled) v = filter.filter(v);
                             if(detectorEnabled) v = detector.filter(v, a);
-                            if(a < squelch) v = 0f;
+                            //if(a < squelch) v = 0f;
 
                             if(v > 1) v = 1;
                             if(v < -1) v = -1;
@@ -183,6 +192,20 @@ public class RtlSdrStreamer {
     public boolean setSquelch(int squelch) {
         this.squelch = (float)squelch / 10000.0f;
         Log.d("DEBUG", "Squelch is " + this.squelch);
+        return true;
+    }
+
+    public boolean setMagicAttenuation(double attenuation) {
+        Log.d("DEBUG", "magic attenuation = " + attenuation);
+        detector.setMagicAttenuation(attenuation);
+        this.magicAttenuation = attenuation;
+        return true;
+    }
+
+    public boolean setMagicBase(double base) {
+        Log.d("DEBUG", "magic base = " + base);
+        detector.setMagicBase(base);
+        this.magicBase = base;
         return true;
     }
 

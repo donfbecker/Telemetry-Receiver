@@ -33,10 +33,9 @@ public class PulseCompassView extends View implements SensorEventListener {
         pulses = new double[SIZE];
         bearings = new double[BEARING_AVERAGE_SIZE];
 
-        sensorManager = (SensorManager)context.getSystemService(Context.SENSOR_SERVICE);
-        sensorRotation      = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
+        sensorManager  = (SensorManager)context.getSystemService(Context.SENSOR_SERVICE);
+        sensorRotation = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
         sensorManager.registerListener(this, sensorRotation, SensorManager.SENSOR_DELAY_NORMAL);
-
     }
 
     @Override
@@ -51,11 +50,7 @@ public class PulseCompassView extends View implements SensorEventListener {
         brush.setColor(Color.parseColor("#888888"));
 
         canvas.save();
-        canvas.rotate((float)(-90 - currentBearing), w/2, h/2);
-
-        // Draw cardinal direction cross
-        canvas.drawLine(w / 2, 0, w/2, h, brush);
-        canvas.drawLine(0, h/2, w, h/2, brush);
+        canvas.rotate((float)(-currentBearing), w/2, h/2);
 
         // Draw rings
         float r = h / 7;
@@ -63,15 +58,22 @@ public class PulseCompassView extends View implements SensorEventListener {
         canvas.drawCircle(w/2, h/2, r*2, brush);
         canvas.drawCircle(w/2, h/2, r*3, brush);
 
+        // Draw cardinal direction cross
+        canvas.drawLine(w / 2, 0, w/2, h, brush);
+        canvas.drawLine(0, h/2, w, h/2, brush);
+        brush.setTextAlign(Paint.Align.CENTER);
+        brush.setTextSize(50);
+        canvas.drawText("N", w/2, (h/2) - r*3, brush);
+
         // Draw gauge lines
         Path path = new Path();
-        float x = Math.round((w/2) + ((1 + pulses[SIZE-1]) * r * Math.cos(Math.toRadians(SIZE-1))));
-        float y = Math.round((h/2) + ((1 + pulses[SIZE-1]) * r * Math.sin(Math.toRadians(SIZE-1))));
+        float x = Math.round((w/2) + ((1 + pulses[SIZE-1]) * r * Math.cos(Math.toRadians(SIZE- 1 - 90))));
+        float y = Math.round((h/2) + ((1 + pulses[SIZE-1]) * r * Math.sin(Math.toRadians(SIZE- 1 - 90))));
         path.moveTo(x, y);
 
         for(int a = 0; a < 360; a++) {
-            x = Math.round((w/2) + ((1 + pulses[a]) * r * Math.cos(Math.toRadians(a))));
-            y = Math.round((h/2) + ((1 + pulses[a]) * r * Math.sin(Math.toRadians(a))));
+            x = Math.round((w/2) + ((1 + pulses[a]*2) * r * Math.cos(Math.toRadians(a - 90))));
+            y = Math.round((h/2) + ((1 + pulses[a]*2) * r * Math.sin(Math.toRadians(a - 90))));
             path.lineTo(x, y);
         }
         path.close();
@@ -81,7 +83,6 @@ public class PulseCompassView extends View implements SensorEventListener {
         canvas.drawPath(path, brush);
 
         canvas.restore();
-
     }
 
     @Override
@@ -126,7 +127,5 @@ public class PulseCompassView extends View implements SensorEventListener {
                 setBearing(degrees);
                 break;
         }
-
-
     }
 }
