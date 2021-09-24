@@ -35,6 +35,8 @@ public class RtlSdrStreamer {
     public static final byte COMMAND_SET_TUNER_GAIN_BY_ID = 0x0d;
     public static final byte COMMAND_SET_BIAS_TEE         = 0x0e;
 
+    public static final int[] GAIN_VALUES = {0, 9, 14, 27, 37, 77, 87, 125, 144, 157, 166, 197, 207, 229, 254, 280, 297, 328, 338, 364, 372, 386, 402, 421, 434, 439, 445, 480, 496};
+
     private Socket connection;
     private InputStream stream;
 

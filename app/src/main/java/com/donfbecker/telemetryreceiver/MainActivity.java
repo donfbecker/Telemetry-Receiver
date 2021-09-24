@@ -29,7 +29,21 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private int currentGain = 0;
     private int currentSquelch = 0;
 
-    private TextView textFrequency;
+    private Button startButton;
+    private Button stopButton;
+    private TextView frequencyText;
+    private SeekBar gainSeekBar;
+    private TextView gainSeekBarValue;
+    private SeekBar attenuationSeekBar;
+    private TextView attenuationSeekBarValue;
+    private SeekBar magicAttenuationSeekBar;
+    private TextView magicAttenuationSeekBarValue;
+    private SeekBar magicBaseSeekBar;
+    private TextView magicBaseSeekBarValue;
+
+    private Switch lowPassSwitch;
+    private Switch toneDetectorSwitch;
+    private Switch biasTeeSwitch;
 
     private static PulseGaugeView pulseGauge;
     private static PulseCompassView pulseCompass;
@@ -58,43 +72,43 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         streamer = new RtlSdrStreamer();
 
-        final Button startButton = findViewById(R.id.button_start);
+        startButton = findViewById(R.id.button_start);
         startButton.setOnClickListener(this);
 
-        final Button stopButton = findViewById(R.id.button_stop);
+        stopButton = findViewById(R.id.button_stop);
         stopButton.setOnClickListener(this);
 
-        final SeekBar gainSeekBar = findViewById(R.id.seek_gain);
-        gainSeekBar.setOnSeekBarChangeListener(this);
-
-        final SeekBar softwareGainSeekBar = findViewById(R.id.seek_software_gain);
-        softwareGainSeekBar.setOnSeekBarChangeListener(this);
-
-        final SeekBar attenuationSeekBar = findViewById(R.id.seek_attenuation);
-        attenuationSeekBar.setOnSeekBarChangeListener(this);
-
-        final SeekBar magicAttenuationSeekBar = findViewById(R.id.seek_magic_attenuation);
-        magicAttenuationSeekBar.setOnSeekBarChangeListener(this);
-
-        final SeekBar magicBaseSeekBar = findViewById(R.id.seek_magic_base);
-        magicBaseSeekBar.setOnSeekBarChangeListener(this);
-
-        final Switch lowPassSwitch = findViewById(R.id.switch_lowpass);
-        lowPassSwitch.setOnCheckedChangeListener(this);
-
-        final Switch toneDetectorSwitch = findViewById(R.id.switch_tone_detector);
-        toneDetectorSwitch.setOnCheckedChangeListener(this);
-
-        final Switch biasTeeSwitch = findViewById(R.id.switch_bias_tee);
-        biasTeeSwitch.setOnCheckedChangeListener(this);
-
-        textFrequency = findViewById(R.id.text_frequency);
-        textFrequency.setText(String.format("%.6f", (currentFrequency / 1000000f)));
+        frequencyText = findViewById(R.id.text_frequency);
+        frequencyText.setText(String.format("%.6f", (currentFrequency / 1000000f)));
 
         pulseGauge = findViewById(R.id.pulse_gauge);
         pulseCompass = findViewById(R.id.pulse_compass);
 
+        gainSeekBar = findViewById(R.id.seek_gain);
+        gainSeekBar.setMax(RtlSdrStreamer.GAIN_VALUES.length - 1);
+        gainSeekBar.setOnSeekBarChangeListener(this);
+        gainSeekBarValue = findViewById(R.id.text_gain_value);
 
+        attenuationSeekBar = findViewById(R.id.seek_attenuation);
+        attenuationSeekBar.setOnSeekBarChangeListener(this);
+        attenuationSeekBarValue = findViewById(R.id.text_attenuation_value);
+
+        magicAttenuationSeekBar = findViewById(R.id.seek_magic_attenuation);
+        magicAttenuationSeekBar.setOnSeekBarChangeListener(this);
+        magicAttenuationSeekBarValue = findViewById(R.id.text_magic_attenuation_value);
+
+        magicBaseSeekBar = findViewById(R.id.seek_magic_base);
+        magicBaseSeekBar.setOnSeekBarChangeListener(this);
+        magicBaseSeekBarValue = findViewById(R.id.text_magic_base_value);
+
+        lowPassSwitch = findViewById(R.id.switch_lowpass);
+        lowPassSwitch.setOnCheckedChangeListener(this);
+
+        toneDetectorSwitch = findViewById(R.id.switch_tone_detector);
+        toneDetectorSwitch.setOnCheckedChangeListener(this);
+
+        biasTeeSwitch = findViewById(R.id.switch_bias_tee);
+        biasTeeSwitch.setOnCheckedChangeListener(this);
     }
 
     //
@@ -120,23 +134,24 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     public void onProgressChanged(SeekBar seekBar, int value, boolean b) {
         switch(seekBar.getId()) {
             case R.id.seek_gain:
-                setGain(value);
-                break;
-
-            case R.id.seek_software_gain:
-                setSoftwareGain(value);
+                setGain(RtlSdrStreamer.GAIN_VALUES[value]);
+                gainSeekBarValue.setText(String.format("%.1fdb", (RtlSdrStreamer.GAIN_VALUES[value]/10.0)));
                 break;
 
             case R.id.seek_attenuation:
                 setAttenuation(value);
+                double db = (value == 0) ? 0 : Math.log10(1.0 - (value / 100.0)) * 10;
+                attenuationSeekBarValue.setText(String.format("%.1fdb", db));
                 break;
 
             case R.id.seek_magic_attenuation:
                 streamer.setMagicAttenuation(value / 100.0);
+                magicAttenuationSeekBarValue.setText(String.format("%.1f", value/100.0));
                 break;
 
             case R.id.seek_magic_base:
                 streamer.setMagicBase(value / 100.0);
+                magicBaseSeekBarValue.setText(String.format("%.1f", value/100.0));
                 break;
         }
     }
@@ -202,7 +217,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     private void setFrequency(int frequency) {
         this.currentFrequency = frequency;
-        textFrequency.setText(String.format("%.6f", (currentFrequency/1000000.0)));
+        frequencyText.setText(String.format("%.6f", (currentFrequency/1000000.0)));
         streamer.setFrequency(frequency);
     }
 

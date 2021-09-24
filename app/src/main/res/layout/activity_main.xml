@@ -38,44 +38,43 @@
 			<com.donfbecker.telemetryreceiver.PulseGaugeView android:id="@+id/pulse_gauge" android:layout_width="match_parent" android:layout_height="50dp" android:layout_margin="5dp" />
 			<com.donfbecker.telemetryreceiver.PulseCompassView android:id="@+id/pulse_compass" android:layout_width="match_parent" android:layout_height="50dp" android:layout_margin="5dp" />
 
-			<LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
-				<TextView android:id="@+id/text_gain" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="20" android:layout_margin="5dp" android:text="Hardware Gain" />
-				<SeekBar android:id="@+id/seek_gain"  android:layout_width="0dp" android:layout_height="wrap_content" android:layout_margin="5dp" android:layout_weight="80" android:max="500" />
+			<LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:layout_margin="5dp">
+				<TextView android:id="@+id/text_gain" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="25" android:text="Gain" />
+				<SeekBar android:id="@+id/seek_gain"  android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="70" android:max="100" />
+				<TextView android:id="@+id/text_gain_value" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="15" android:text="0db" />
+			</LinearLayout>
+
+			<LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:layout_margin="5dp">
+				<TextView android:id="@+id/text_attenuation" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="25" android:text="Attenuation" />
+				<SeekBar android:id="@+id/seek_attenuation"  android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="70" android:min="1" android:max="99" />
+				<TextView android:id="@+id/text_attenuation_value" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="15" android:text="0db" />
+			</LinearLayout>
+
+			<LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:layout_margin="5dp">
+				<TextView android:id="@+id/text_magic_attenuation" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="25" android:text="Magic A" />
+				<SeekBar android:id="@+id/seek_magic_attenuation"  android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="70" android:min="100" android:max="300"/> 
+				<TextView android:id="@+id/text_magic_attenuation_value" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="15" android:text="1.0" />
+			</LinearLayout>
+
+			<LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:layout_margin="5dp">
+				<TextView android:id="@+id/text_magic_base" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="25" android:text="Magic B" />
+				<SeekBar android:id="@+id/seek_magic_base"  android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="70" android:min="1" android:max="100"/> 
+				<TextView android:id="@+id/text_magic_base_value" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="15" android:text="0.1" />
 			</LinearLayout>
 
 			<LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
-				<TextView android:id="@+id/text_software_gain" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="20" android:layout_margin="5dp" android:text="Software Gain" />
-				<SeekBar android:id="@+id/seek_software_gain"  android:layout_width="0dp" android:layout_height="wrap_content" android:layout_margin="5dp" android:layout_weight="80" android:min="1" android:max="100" />
+				<TextView android:id="@+id/text_lowpass" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="60" android:layout_margin="5dp" android:text="Low Pass Filter" />
+				<Switch android:id="@+id/switch_lowpass"  android:layout_width="0dp" android:layout_height="wrap_content" android:layout_margin="5dp" android:layout_weight="40" /> 
 			</LinearLayout>
 
 			<LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
-				<TextView android:id="@+id/text_attenuation" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="20" android:layout_margin="5dp" android:text="Attenuator" />
-				<SeekBar android:id="@+id/seek_attenuation"  android:layout_width="0dp" android:layout_height="wrap_content" android:layout_margin="5dp" android:layout_weight="80" android:min="1" android:max="100" />
+				<TextView android:id="@+id/text_tone_detector" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="60" android:layout_margin="5dp" android:text="Tone Detector" />
+				<Switch android:id="@+id/switch_tone_detector"  android:layout_width="0dp" android:layout_height="wrap_content" android:layout_margin="5dp" android:layout_weight="40" /> 
 			</LinearLayout>
 
 			<LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
-				<TextView android:id="@+id/text_magic_attenuation" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="20" android:layout_margin="5dp" android:text="Magic A" />
-				<SeekBar android:id="@+id/seek_magic_attenuation"  android:layout_width="0dp" android:layout_height="wrap_content" android:layout_margin="5dp" android:layout_weight="80" android:min="100" android:max="300"/> 
-			</LinearLayout>
-
-			<LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
-				<TextView android:id="@+id/text_magic_base" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="20" android:layout_margin="5dp" android:text="Magic B" />
-				<SeekBar android:id="@+id/seek_magic_base"  android:layout_width="0dp" android:layout_height="wrap_content" android:layout_margin="5dp" android:layout_weight="80" android:min="1" android:max="100"/> 
-			</LinearLayout>
-
-			<LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
-				<TextView android:id="@+id/text_lowpass" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="20" android:layout_margin="5dp" android:text="Low Pass" />
-				<Switch android:id="@+id/switch_lowpass"  android:layout_width="0dp" android:layout_height="wrap_content" android:layout_margin="5dp" android:layout_weight="80" /> 
-			</LinearLayout>
-
-			<LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
-				<TextView android:id="@+id/text_tone_detector" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="20" android:layout_margin="5dp" android:text="Tone Detector" />
-				<Switch android:id="@+id/switch_tone_detector"  android:layout_width="0dp" android:layout_height="wrap_content" android:layout_margin="5dp" android:layout_weight="80" /> 
-			</LinearLayout>
-
-			<LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
-				<TextView android:id="@+id/text_bias_tee" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="20" android:layout_margin="5dp" android:text="Bias Tee" />
-				<Switch android:id="@+id/switch_bias_tee"  android:layout_width="0dp" android:layout_height="wrap_content" android:layout_margin="5dp" android:layout_weight="80" /> 
+				<TextView android:id="@+id/text_bias_tee" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="60" android:layout_margin="5dp" android:text="Bias Tee" />
+				<Switch android:id="@+id/switch_bias_tee"  android:layout_width="0dp" android:layout_height="wrap_content" android:layout_margin="5dp" android:layout_weight="40" /> 
 			</LinearLayout>
 
 			<LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
