@@ -167,6 +167,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         switch (view.getId()) {
             case R.id.switch_enable_agc:
                 streamer.setAGCMode(enabled);
+                pulseCompass.reset();
                 break;
             case R.id.switch_bias_tee:
                 streamer.setBiasTee(enabled);
