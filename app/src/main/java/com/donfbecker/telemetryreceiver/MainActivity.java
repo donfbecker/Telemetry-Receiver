@@ -36,10 +36,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private TextView gainSeekBarValue;
     private SeekBar attenuationSeekBar;
     private TextView attenuationSeekBarValue;
-    private SeekBar magicAttenuationSeekBar;
-    private TextView magicAttenuationSeekBarValue;
-    private SeekBar magicBaseSeekBar;
-    private TextView magicBaseSeekBarValue;
 
     private Switch enableAGCSwitch;
     private Switch toneDetectorSwitch;
@@ -52,9 +48,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         @Override
         public void handleMessage(Message message) {
             switch(message.what) {
-                case ToneDetector.MESSAGE_TONE_DETECTED:
-                    pulseGauge.addPulse(message.arg2 / 1000000.0);
-                    pulseCompass.addPulse(message.arg2 / 1000000.0);
+                case RtlSdrStreamer.MESSAGE_SIGNAL_STRENGTH:
+                    double power = message.arg1 / 1000000.0;
+                    pulseGauge.addPulse(power);
+                    pulseCompass.addPulse(power);
                     break;
 
                 default:
@@ -93,19 +90,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         attenuationSeekBar.setOnSeekBarChangeListener(this);
         attenuationSeekBarValue = findViewById(R.id.text_attenuation_value);
 
-        magicAttenuationSeekBar = findViewById(R.id.seek_magic_attenuation);
-        magicAttenuationSeekBar.setOnSeekBarChangeListener(this);
-        magicAttenuationSeekBarValue = findViewById(R.id.text_magic_attenuation_value);
-
-        magicBaseSeekBar = findViewById(R.id.seek_magic_base);
-        magicBaseSeekBar.setOnSeekBarChangeListener(this);
-        magicBaseSeekBarValue = findViewById(R.id.text_magic_base_value);
-
         enableAGCSwitch = findViewById(R.id.switch_enable_agc);
         enableAGCSwitch.setOnCheckedChangeListener(this);
-
-        toneDetectorSwitch = findViewById(R.id.switch_tone_detector);
-        toneDetectorSwitch.setOnCheckedChangeListener(this);
 
         biasTeeSwitch = findViewById(R.id.switch_bias_tee);
         biasTeeSwitch.setOnCheckedChangeListener(this);
@@ -141,18 +127,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
             case R.id.seek_attenuation:
                 setAttenuation(value);
-                double db = (value == 0) ? 0 : Math.log10(1.0 - (value / 100.0)) * 10;
+                double db = (value == 0) ? 0 : Math.log10(1.0 - (value / 100.0)) * 20;
                 attenuationSeekBarValue.setText(String.format("%.1fdb", db));
-                break;
-
-            case R.id.seek_magic_attenuation:
-                streamer.setMagicAttenuation(value / 100.0);
-                magicAttenuationSeekBarValue.setText(String.format("%.1f", value/100.0));
-                break;
-
-            case R.id.seek_magic_base:
-                streamer.setMagicBase(value / 100.0);
-                magicBaseSeekBarValue.setText(String.format("%.1f", value/100.0));
                 break;
         }
     }
@@ -171,9 +147,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 break;
             case R.id.switch_bias_tee:
                 streamer.setBiasTee(enabled);
-                break;
-            case R.id.switch_tone_detector:
-                streamer.setDetectorEnabled(enabled);
                 break;
         }
     }

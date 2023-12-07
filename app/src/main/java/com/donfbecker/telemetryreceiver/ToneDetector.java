@@ -6,7 +6,7 @@ import android.os.Message;
 import android.util.Log;
 
 public class ToneDetector {
-    public static final int MESSAGE_TONE_DETECTED = 10001;
+    public static final int MESSAGE_TONE_DETECTED = 20001;
 
     private double sampleRate;
     private double[] buffer;
@@ -63,7 +63,7 @@ public class ToneDetector {
                     Log.d("DEBUG", String.format("magicBase=%.4f maxValue=%.4f maxAmplitude=%.4f", magicBase, maxValue, maxAmplitude));
                     Log.d("DEBUG", String.format("%.0fhz tone detected lasting %.1fms with amplitude of %.4f (s=%.4f)", f, t * 1000, maxAmplitude, s));
                     //multiplySampleValues(durationSamples, s);
-                    MainActivity.handler.sendMessageDelayed(MainActivity.handler.obtainMessage(ToneDetector.MESSAGE_TONE_DETECTED, (int) f, (int) (maxAmplitude * s * 1000000)), (int) t);
+                    MainActivity.handler.sendMessage(MainActivity.handler.obtainMessage(ToneDetector.MESSAGE_TONE_DETECTED, (int) f, (int) (maxAmplitude * s * 1000000)));
                 }
 
                 durationSamples = 0;

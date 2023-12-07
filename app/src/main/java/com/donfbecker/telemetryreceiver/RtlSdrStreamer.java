@@ -41,6 +41,8 @@ public class RtlSdrStreamer {
     public static final byte COMMAND_SET_TUNER_GAIN_BY_ID = 0x0d;
     public static final byte COMMAND_SET_BIAS_TEE         = 0x0e;
 
+    public static final int MESSAGE_SIGNAL_STRENGTH       = 10001;
+
     public static final int[] GAIN_VALUES = {0, 9, 14, 27, 37, 77, 87, 125, 144, 157, 166, 197, 207, 229, 254, 280, 297, 328, 338, 364, 372, 386, 402, 421, 434, 439, 445, 480, 496};
 
     private Socket connection;
@@ -55,24 +57,21 @@ public class RtlSdrStreamer {
     private double attenuation = 1.0d;
     private double squelch = 0.0d;
     private boolean agcEnabled = false;
-    private boolean detectorEnabled = false;
-
-    private double magicAttenuation = 1.0d;
-    private double magicBase = 0.1d;
 
     private RCFilter iFilter;
     private RCFilter qFilter;
-    private ToneDetector detector;
 
     private ArrayBlockingQueue<byte[]> commandQueue = null;
 
     private double d_table[];
 
+    private int blocks = 0;
+    private double blockPowerMax;
+
     public RtlSdrStreamer() {
         commandQueue = new ArrayBlockingQueue<byte[]>(100);
         iFilter = new RCFilter(RCFilter.FILTER_LOWPASS, 24000.0d, 1.0d/IQ_SAMPLE_RATE);
         qFilter = new RCFilter(RCFilter.FILTER_LOWPASS, 24000.0d, 1.0d/IQ_SAMPLE_RATE);
-        detector = new ToneDetector(48000, 200, 1200, 10);
 
         // Initialize byte to double table
         d_table = new double[256];
@@ -101,6 +100,8 @@ public class RtlSdrStreamer {
             double[] iAvgBuffer = new double[trackBufferSize];
             double[] qAvgBuffer = new double[trackBufferSize];
             byte[] iqBuffer = new byte[iqBufferSize];
+
+            // variables for synth data
 
             public void run() {
                 try {
@@ -148,10 +149,6 @@ public class RtlSdrStreamer {
 
                             v = q; // q is the real component of the signal.
 
-                            double s = Math.max(0, (magicBase - ((magicBase - a) * magicAttenuation))) / a;
-                            v *= s;
-
-                            if(detectorEnabled) v = detector.filter(v, a);
                             //if(a < squelch) v = 0.0d;
 
                             if(v > 1) v = 1;
@@ -161,6 +158,13 @@ public class RtlSdrStreamer {
                         }
 
                         double power = sumA / trackBufferSize;
+                        if(power > blockPowerMax) blockPowerMax = power;
+                        if(++blocks >= 20) {
+                            MainActivity.handler.sendMessage(MainActivity.handler.obtainMessage(MESSAGE_SIGNAL_STRENGTH, (int)(blockPowerMax * 1000000), 0));
+                            blocks = 0;
+                            blockPowerMax = 0.0;
+                        }
+
                         int r = audioTrack.write(trackBuffer, 0, trackBufferSize);
 
                         // Check command queue for packets
@@ -222,25 +226,6 @@ public class RtlSdrStreamer {
     public boolean setSquelch(int squelch) {
         this.squelch = (double)squelch / 10000.0d;
         Log.d("DEBUG", "Squelch is " + this.squelch);
-        return true;
-    }
-
-    public boolean setMagicAttenuation(double attenuation) {
-        Log.d("DEBUG", "magic attenuation = " + attenuation);
-        detector.setMagicAttenuation(attenuation);
-        this.magicAttenuation = attenuation;
-        return true;
-    }
-
-    public boolean setMagicBase(double base) {
-        Log.d("DEBUG", "magic base = " + base);
-        detector.setMagicBase(base);
-        this.magicBase = base;
-        return true;
-    }
-
-    public boolean setDetectorEnabled(boolean enabled) {
-        this.detectorEnabled = enabled;
         return true;
     }
 
