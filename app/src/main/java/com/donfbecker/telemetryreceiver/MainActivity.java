@@ -41,7 +41,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private SeekBar magicBaseSeekBar;
     private TextView magicBaseSeekBarValue;
 
-    private Switch lowPassSwitch;
+    private Switch enableAGCSwitch;
     private Switch toneDetectorSwitch;
     private Switch biasTeeSwitch;
 
@@ -101,8 +101,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         magicBaseSeekBar.setOnSeekBarChangeListener(this);
         magicBaseSeekBarValue = findViewById(R.id.text_magic_base_value);
 
-        lowPassSwitch = findViewById(R.id.switch_lowpass);
-        lowPassSwitch.setOnCheckedChangeListener(this);
+        enableAGCSwitch = findViewById(R.id.switch_enable_agc);
+        enableAGCSwitch.setOnCheckedChangeListener(this);
 
         toneDetectorSwitch = findViewById(R.id.switch_tone_detector);
         toneDetectorSwitch.setOnCheckedChangeListener(this);
@@ -117,8 +117,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     public void onClick(View view) {
         switch(view.getId()) {
             case R.id.button_start:
-                Log.d("DEBUG", "iqsrc://-a 127.0.0.1 -p 1234 -s " + RtlSdrStreamer.IQ_SAMPLE_RATE);
-                Intent intent = new Intent(Intent.ACTION_VIEW).setData(Uri.parse("iqsrc://-a 127.0.0.1 -p 1234 -g 0 -f 148420440 -s " + RtlSdrStreamer.IQ_SAMPLE_RATE));
+                String intentUrl = "iqsrc://-a 127.0.0.1 -p 1234 -g " + currentGain + " -f " + currentFrequency + " -s " + RtlSdrStreamer.IQ_SAMPLE_RATE;
+                Log.d("DEBUG", intentUrl);
+                Intent intent = new Intent(Intent.ACTION_VIEW).setData(Uri.parse(intentUrl));
                 startActivityForResult(intent, 1234);
                 break;
 
@@ -164,11 +165,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     //
     public void onCheckedChanged(CompoundButton view, boolean enabled) {
         switch (view.getId()) {
+            case R.id.switch_enable_agc:
+                streamer.setAGCMode(enabled);
+                break;
             case R.id.switch_bias_tee:
                 streamer.setBiasTee(enabled);
-                break;
-            case R.id.switch_lowpass:
-                streamer.setFilterEnabled(enabled);
                 break;
             case R.id.switch_tone_detector:
                 streamer.setDetectorEnabled(enabled);
@@ -193,26 +194,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     public void onSetFrequency(View v) {
         int n = Integer.parseInt(getResources().getResourceEntryName(v.getId()).replace("button_frequency_", ""));
         setFrequency(n);
-    }
-
-    public void onEnableAGC(View v) {
-        streamer.setAGCMode(true);
-        pulseCompass.reset();
-    }
-
-    public void onDisableAGC(View v) {
-        streamer.setAGCMode(false);
-        pulseCompass.reset();
-    }
-
-    public void onEnableManualGain(View v) {
-        streamer.setGainMode(true);
-        pulseCompass.reset();
-    }
-
-    public void onDisableManualGain(View v) {
-        streamer.setGainMode(false);
-        pulseCompass.reset();
     }
 
     private void setFrequency(int frequency) {

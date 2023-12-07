@@ -13,24 +13,34 @@ public class PulseGaugeView extends View {
 
     private double[] pulses;
 
+    private Paint barBrush;
+    private Paint textBrush;
+
     public PulseGaugeView(Context context, AttributeSet attributes) {
         super(context, attributes);
 
         pulses = new double[SIZE];
+
+        barBrush = new Paint();
+        barBrush.setStyle(Paint.Style.FILL);
+        barBrush.setColor(Color.parseColor("#008800"));
+
+        textBrush = new Paint();
+        textBrush.setStyle(Paint.Style.FILL);
+        textBrush.setColor(Color.parseColor("#000000"));
+
     }
 
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
 
-        Paint brush = new Paint();
-        brush.setStyle(Paint.Style.FILL);
-        brush.setColor(Color.parseColor("#008800"));
-
         float h = canvas.getHeight() / SIZE;
+        textBrush.setTextSize(h);
 
         for(int i = 0; i < SIZE; i++) {
-            canvas.drawRect(0, i * h, (float)(canvas.getWidth() * pulses[i]), (i + 1) * h, brush);
+            canvas.drawRect(55, i * h, 55 + (float)((canvas.getWidth()-55) * pulses[i]), (i + 1) * h, barBrush);
+            canvas.drawText(String.format("%.2f", pulses[i]), 0, (i+1)*h, textBrush);
         }
     }
 

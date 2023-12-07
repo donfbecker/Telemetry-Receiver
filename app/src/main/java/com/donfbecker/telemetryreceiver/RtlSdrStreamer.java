@@ -13,13 +13,19 @@ import android.media.AudioTrack;
 import android.os.Handler;
 import android.util.Log;
 
+// I think I should sample at 240kHz.  That is a multiple of 5 to reduce
+// down to the audio sample rate of 48kHz.  If we read 320 samples each
+// time, that reduces down to 64 audio samples, and represents about
+// 1.3ms of time.  8 of those sample blocks would represent 10.4ms of
+// pulse data, can can be combined to 512 samples to run though FFT.
+
 public class RtlSdrStreamer {
     // Sample rate must be between 225001 and 300000 or 900001 and 3200000
-    public static final int IQ_SAMPLE_RATE = 1920000;
+    public static final int IQ_SAMPLE_RATE = 240000;
     public static final int AUDIO_SAMPLE_RATE = 48000;
-    public static final int SAMPLE_RATIO = 40;
+    public static final int SAMPLE_RATIO = 5;
 
-    public static final double SQRT_TWO = Math.sqrt(2);
+    public static final double SQRT_TWO = Math.sqrt(2.0);
 
     public static final byte COMMAND_SET_FREQUENCY        = 0x01;
     public static final byte COMMAND_SET_SAMPLERATE       = 0x02;
@@ -40,29 +46,39 @@ public class RtlSdrStreamer {
     private Socket connection;
     private InputStream stream;
 
-    private boolean stayAlive = false;
+    private boolean stayAlive = true;
     private AudioTrack audioTrack;
     private int trackBufferSize;
     private int iqBufferSize;
 
-    private double softwareGain = 1;
-    private double attenuation = 1;
-    private double squelch = 0;
-    private boolean filterEnabled = false;
+    private double softwareGain = 1.0d;
+    private double attenuation = 1.0d;
+    private double squelch = 0.0d;
+    private boolean agcEnabled = false;
     private boolean detectorEnabled = false;
 
-    private double magicAttenuation = 1;
-    private double magicBase = 0.1;
+    private double magicAttenuation = 1.0d;
+    private double magicBase = 0.1d;
 
-    private LowPassFilter filter;
+    private RCFilter iFilter;
+    private RCFilter qFilter;
     private ToneDetector detector;
 
     private ArrayBlockingQueue<byte[]> commandQueue = null;
 
+    private double d_table[];
+
     public RtlSdrStreamer() {
         commandQueue = new ArrayBlockingQueue<byte[]>(100);
-        filter = new LowPassFilter();
+        iFilter = new RCFilter(RCFilter.FILTER_LOWPASS, 24000.0d, 1.0d/IQ_SAMPLE_RATE);
+        qFilter = new RCFilter(RCFilter.FILTER_LOWPASS, 24000.0d, 1.0d/IQ_SAMPLE_RATE);
         detector = new ToneDetector(48000, 200, 1200, 10);
+
+        // Initialize byte to double table
+        d_table = new double[256];
+        for(int i = 0; i < 256; i++) {
+            d_table[i] = (double)(((double)i - 127.5f) / 127.5f);
+        }
     }
 
     public boolean isRunning() {
@@ -72,7 +88,7 @@ public class RtlSdrStreamer {
     public boolean start() {
         Log.d("DEBUG", "RtlSdrStreamer.start()");
 
-        trackBufferSize = 300; //AudioTrack.getMinBufferSize(AUDIO_SAMPLE_RATE, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT);
+        trackBufferSize = 64; //AudioTrack.getMinBufferSize(AUDIO_SAMPLE_RATE, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT);
         iqBufferSize = trackBufferSize * SAMPLE_RATIO * 2;
 
         Log.d("DEBUG", "trackBufferSize = " + trackBufferSize);
@@ -82,6 +98,8 @@ public class RtlSdrStreamer {
 
         new Thread() {
             short[] trackBuffer = new short[trackBufferSize];
+            double[] iAvgBuffer = new double[trackBufferSize];
+            double[] qAvgBuffer = new double[trackBufferSize];
             byte[] iqBuffer = new byte[iqBufferSize];
 
             public void run() {
@@ -89,9 +107,10 @@ public class RtlSdrStreamer {
                     connection = new Socket("127.0.0.1", 1234);
                     stream = connection.getInputStream();
                     DataInputStream input = new DataInputStream(new BufferedInputStream(stream));
+                    Log.d("DEBUG", "Connected to RTL-SDR driver");
 
-                    // Let's try disabling AGC
-                    setAGCMode(false);
+                    // Let's try disabling AGC, and turn on manual gain
+                    setAGCMode(agcEnabled);
                     setGainMode(true);
 
                     audioTrack.play();
@@ -101,6 +120,7 @@ public class RtlSdrStreamer {
 
                         double sumI;
                         double sumQ;
+                        double sumA = 0;
                         double i;
                         double q;
                         double a;
@@ -110,23 +130,29 @@ public class RtlSdrStreamer {
                             sumI = 0;
                             sumQ = 0;
                             for (int k = 0; k < SAMPLE_RATIO; k++) {
-                                sumI += (double)(((iqBuffer[(j * (SAMPLE_RATIO * 2)) + (k * 2)] & 0xFF) - 127.5) / 127.5);
-                                sumQ += (double)(((iqBuffer[(j * (SAMPLE_RATIO * 2)) + (k * 2) + 1] & 0xFF) - 127.5) / 127.5);
+                                int offset = (j * (SAMPLE_RATIO * 2)) + (k * 2);
+                                
+                                // & 0xFF converts these to unsigned
+                                sumI += iFilter.filter(d_table[iqBuffer[offset] & 0xFF]);
+                                sumQ += qFilter.filter(d_table[iqBuffer[offset + 1] & 0xFF]);
+
                             }
 
                             // Attenuation should be run before filtering
-                            i = (sumI / SAMPLE_RATIO) * softwareGain * attenuation;
-                            q = (sumQ / SAMPLE_RATIO) * softwareGain * attenuation;
+                            i = iAvgBuffer[j] = (sumI / SAMPLE_RATIO) * softwareGain * attenuation;
+                            q = qAvgBuffer[j] = (sumQ / SAMPLE_RATIO) * softwareGain * attenuation;
 
+                            // Divide by the square root of two to normalize max amplitude to 1.0
                             a = Math.sqrt((i * i) + (q * q)) / SQRT_TWO;
-                            v = ((i + q) / 2) ;
+                            sumA += a;
+
+                            v = q; // q is the real component of the signal.
 
                             double s = Math.max(0, (magicBase - ((magicBase - a) * magicAttenuation))) / a;
                             v *= s;
 
-                            if(filterEnabled) v = filter.filter(v);
                             if(detectorEnabled) v = detector.filter(v, a);
-                            //if(a < squelch) v = 0f;
+                            //if(a < squelch) v = 0.0d;
 
                             if(v > 1) v = 1;
                             if(v < -1) v = -1;
@@ -134,7 +160,8 @@ public class RtlSdrStreamer {
                             trackBuffer[j] = (short)(v * 32767);
                         }
 
-                        audioTrack.write(trackBuffer, 0, trackBufferSize);
+                        double power = sumA / trackBufferSize;
+                        int r = audioTrack.write(trackBuffer, 0, trackBufferSize);
 
                         // Check command queue for packets
                         byte[] packet = commandQueue.poll();
@@ -153,6 +180,7 @@ public class RtlSdrStreamer {
     }
 
     public boolean stop() {
+        Log.d("DEBUG", "Stop requested");
         stayAlive = false;
         return true;
     }
@@ -177,7 +205,7 @@ public class RtlSdrStreamer {
         return sendCommand(COMMAND_SET_GAIN, gain);
     }
 
-    public boolean setSoftwareGain(float gain) {
+    public boolean setSoftwareGain(double gain) {
         this.softwareGain = gain;
         return true;
     }
@@ -192,7 +220,7 @@ public class RtlSdrStreamer {
     }
 
     public boolean setSquelch(int squelch) {
-        this.squelch = (float)squelch / 10000.0f;
+        this.squelch = (double)squelch / 10000.0d;
         Log.d("DEBUG", "Squelch is " + this.squelch);
         return true;
     }
@@ -208,11 +236,6 @@ public class RtlSdrStreamer {
         Log.d("DEBUG", "magic base = " + base);
         detector.setMagicBase(base);
         this.magicBase = base;
-        return true;
-    }
-
-    public boolean setFilterEnabled(boolean enabled) {
-        this.filterEnabled = enabled;
         return true;
     }
 
