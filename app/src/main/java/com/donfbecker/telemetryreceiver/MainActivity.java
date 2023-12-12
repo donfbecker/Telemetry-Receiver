@@ -44,6 +44,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private static PulseGaugeView pulseGauge;
     private static PulseCompassView pulseCompass;
 
+
+
     public static Handler handler = new Handler(Looper.getMainLooper()) {
         @Override
         public void handleMessage(Message message) {
@@ -67,7 +69,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         setContentView(R.layout.activity_main);
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
 
-        streamer = new RtlSdrStreamer();
+        streamer = new RtlSdrStreamer(getApplicationContext());
 
         startButton = findViewById(R.id.button_start);
         startButton.setOnClickListener(this);
@@ -103,10 +105,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     public void onClick(View view) {
         switch(view.getId()) {
             case R.id.button_start:
-                String intentUrl = "iqsrc://-a 127.0.0.1 -p 1234 -g " + currentGain + " -f " + currentFrequency + " -s " + RtlSdrStreamer.IQ_SAMPLE_RATE;
-                Log.d("DEBUG", intentUrl);
-                Intent intent = new Intent(Intent.ACTION_VIEW).setData(Uri.parse(intentUrl));
-                startActivityForResult(intent, 1234);
+                streamer.start();
+                streamer.setFrequency(currentFrequency);
+                streamer.setGain(currentGain);
                 break;
 
             case R.id.button_stop:
@@ -200,31 +201,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     @Override
     protected void onDestroy() {
         super.onDestroy();
-
         streamer.stop();
-
-        // Invalid arguments cause the driver to stop
-        Intent intent = new Intent(Intent.ACTION_VIEW).setData(Uri.parse("iqsrc://-x"));
-        startActivity(intent);
-    }
-
-    @Override
-    public void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-
-        Log.d("DEBUG", "onActivityResult(" + requestCode + ", " + resultCode + ")");
-
-        if (requestCode != 1234) return; // This is the requestCode that was used with startActivityForResult
-        if (resultCode == RESULT_OK) {
-            // Connection with device has been opened and the rtl-tcp server is running. You are now responsible for connecting.
-            int[] supportedTcpCommands = data.getIntArrayExtra("supportedTcpCommands");
-            streamer.start();
-            streamer.setFrequency(currentFrequency);
-            streamer.setGain(currentGain);
-        } else {
-            // something went wrong, and the driver failed to start
-            String message = data.getStringExtra("detailed_exception_message");
-            Log.d("ERROR", message); // Show the user why something went wrong
-        }
     }
 }

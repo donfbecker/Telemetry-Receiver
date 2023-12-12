@@ -7,6 +7,7 @@ import java.lang.Thread;
 import java.net.Socket;
 import java.util.concurrent.ArrayBlockingQueue;
 
+import android.content.Context;
 import android.media.AudioFormat;
 import android.media.AudioManager;
 import android.media.AudioTrack;
@@ -45,6 +46,8 @@ public class RtlSdrStreamer {
 
     public static final int[] GAIN_VALUES = {0, 9, 14, 27, 37, 77, 87, 125, 144, 157, 166, 197, 207, 229, 254, 280, 297, 328, 338, 364, 372, 386, 402, 421, 434, 439, 445, 480, 496};
 
+    private RtlSdr device;
+
     private Socket connection;
     private InputStream stream;
 
@@ -68,7 +71,7 @@ public class RtlSdrStreamer {
     private int blocks = 0;
     private double blockPowerMax;
 
-    public RtlSdrStreamer() {
+    public RtlSdrStreamer(Context ctx) {
         commandQueue = new ArrayBlockingQueue<byte[]>(100);
         iFilter = new RCFilter(RCFilter.FILTER_LOWPASS, 24000.0d, 1.0d/IQ_SAMPLE_RATE);
         qFilter = new RCFilter(RCFilter.FILTER_LOWPASS, 24000.0d, 1.0d/IQ_SAMPLE_RATE);
@@ -78,6 +81,8 @@ public class RtlSdrStreamer {
         for(int i = 0; i < 256; i++) {
             d_table[i] = (double)(((double)i - 127.5f) / 127.5f);
         }
+
+        device = new RtlSdr(ctx);
     }
 
     public boolean isRunning() {
@@ -87,98 +92,11 @@ public class RtlSdrStreamer {
     public boolean start() {
         Log.d("DEBUG", "RtlSdrStreamer.start()");
 
-        trackBufferSize = 64; //AudioTrack.getMinBufferSize(AUDIO_SAMPLE_RATE, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT);
-        iqBufferSize = trackBufferSize * SAMPLE_RATIO * 2;
+        try {
+            device.open();
+        } catch (Exception e) {
 
-        Log.d("DEBUG", "trackBufferSize = " + trackBufferSize);
-        Log.d("DEBUG", "iqBufferSize = " + iqBufferSize);
-
-        audioTrack = new AudioTrack(AudioManager.STREAM_MUSIC, AUDIO_SAMPLE_RATE, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT, trackBufferSize, AudioTrack.MODE_STREAM);
-
-        new Thread() {
-            short[] trackBuffer = new short[trackBufferSize];
-            double[] iAvgBuffer = new double[trackBufferSize];
-            double[] qAvgBuffer = new double[trackBufferSize];
-            byte[] iqBuffer = new byte[iqBufferSize];
-
-            // variables for synth data
-
-            public void run() {
-                try {
-                    connection = new Socket("127.0.0.1", 1234);
-                    stream = connection.getInputStream();
-                    DataInputStream input = new DataInputStream(new BufferedInputStream(stream));
-                    Log.d("DEBUG", "Connected to RTL-SDR driver");
-
-                    // Let's try disabling AGC, and turn on manual gain
-                    setAGCMode(agcEnabled);
-                    setGainMode(true);
-
-                    audioTrack.play();
-                    stayAlive = true;
-                    while (stayAlive) {
-                        input.readFully(iqBuffer);
-
-                        double sumI;
-                        double sumQ;
-                        double sumA = 0;
-                        double i;
-                        double q;
-                        double a;
-                        double v;
-
-                        for (int j = 0; j < trackBufferSize; j++) {
-                            sumI = 0;
-                            sumQ = 0;
-                            for (int k = 0; k < SAMPLE_RATIO; k++) {
-                                int offset = (j * (SAMPLE_RATIO * 2)) + (k * 2);
-                                
-                                // & 0xFF converts these to unsigned
-                                sumI += iFilter.filter(d_table[iqBuffer[offset] & 0xFF]);
-                                sumQ += qFilter.filter(d_table[iqBuffer[offset + 1] & 0xFF]);
-
-                            }
-
-                            // Attenuation should be run before filtering
-                            i = iAvgBuffer[j] = (sumI / SAMPLE_RATIO) * softwareGain * attenuation;
-                            q = qAvgBuffer[j] = (sumQ / SAMPLE_RATIO) * softwareGain * attenuation;
-
-                            // Divide by the square root of two to normalize max amplitude to 1.0
-                            a = Math.sqrt((i * i) + (q * q)) / SQRT_TWO;
-                            sumA += a;
-
-                            v = q; // q is the real component of the signal.
-
-                            //if(a < squelch) v = 0.0d;
-
-                            if(v > 1) v = 1;
-                            if(v < -1) v = -1;
-
-                            trackBuffer[j] = (short)(v * 32767);
-                        }
-
-                        double power = sumA / trackBufferSize;
-                        if(power > blockPowerMax) blockPowerMax = power;
-                        if(++blocks >= 20) {
-                            MainActivity.handler.sendMessage(MainActivity.handler.obtainMessage(MESSAGE_SIGNAL_STRENGTH, (int)(blockPowerMax * 1000000), 0));
-                            blocks = 0;
-                            blockPowerMax = 0.0;
-                        }
-
-                        int r = audioTrack.write(trackBuffer, 0, trackBufferSize);
-
-                        // Check command queue for packets
-                        byte[] packet = commandQueue.poll();
-                        if (packet != null) connection.getOutputStream().write(packet);
-                    }
-
-                    audioTrack.stop();
-                    connection.close();
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
-        }.start();
+        }
 
         return true;
     }
