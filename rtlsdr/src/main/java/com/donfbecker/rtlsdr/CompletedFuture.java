@@ -18,22 +18,20 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package com.donfbecker.telemetryreceiver;
-
-import androidx.annotation.NonNull;
+package com.donfbecker.rtlsdr;
 
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-/**
- * This is a future task that will block until result has been returned
- */
-public class AsyncFuture<V> implements Future<V> {
-    private final Object locker = new Object();
-    private V object;
-    private boolean ready = false;
+public class CompletedFuture<T> implements Future<T> {
+
+    private final T result;
+
+    public CompletedFuture(T result) {
+        this.result = result;
+    }
 
     @Override
     public boolean cancel(boolean mayInterruptIfRunning) {
@@ -47,34 +45,16 @@ public class AsyncFuture<V> implements Future<V> {
 
     @Override
     public boolean isDone() {
-        synchronized (locker) {
-            return ready;
-        }
+        return true;
     }
 
     @Override
-    public V get() throws InterruptedException, ExecutionException {
-        synchronized (locker) {
-            locker.wait();
-            return object;
-        }
+    public T get() throws InterruptedException, ExecutionException {
+        return result;
     }
 
     @Override
-    public V get(long timeout, @NonNull TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
-        synchronized (locker) {
-            locker.wait(unit.toMillis(timeout));
-            return object;
-        }
-    }
-
-    public void setDone(V object) {
-        synchronized (locker) {
-            if(!this.ready) {
-                this.object = object;
-                this.ready = true;
-                locker.notify();
-            }
-        }
+    public T get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
+        return result;
     }
 }

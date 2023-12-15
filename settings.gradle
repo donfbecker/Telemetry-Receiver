@@ -8,3 +8,4 @@ dependencyResolutionManagement {
 }
 rootProject.name = "Telemetry Receiver With Driver"
 include ':app'
+include ':rtlsdr'

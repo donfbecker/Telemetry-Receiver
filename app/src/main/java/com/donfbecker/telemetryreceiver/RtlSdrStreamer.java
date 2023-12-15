@@ -1,5 +1,7 @@
 package com.donfbecker.telemetryreceiver;
 
+import com.donfbecker.rtlsdr.RtlSdr;
+
 import java.io.BufferedInputStream;
 import java.io.DataInputStream;
 import java.io.InputStream;
@@ -8,6 +10,7 @@ import java.net.Socket;
 import java.util.concurrent.ArrayBlockingQueue;
 
 import android.content.Context;
+import android.hardware.usb.UsbDevice;
 import android.media.AudioFormat;
 import android.media.AudioManager;
 import android.media.AudioTrack;
@@ -82,7 +85,7 @@ public class RtlSdrStreamer {
             d_table[i] = (double)(((double)i - 127.5f) / 127.5f);
         }
 
-        device = new RtlSdr(ctx);
+        RtlSdr.initialize(ctx);
     }
 
     public boolean isRunning() {
@@ -90,10 +93,15 @@ public class RtlSdrStreamer {
     }
 
     public boolean start() {
-        Log.d("DEBUG", "RtlSdrStreamer.start()");
+        Log.d("RtlSdrStreamer", "RtlSdrStreamer.start()");
 
         try {
-            device.open();
+            int count = RtlSdr.getDeviceCount();
+            Log.d("RtlSdrStreamer", "Available devices: " + count);
+            for(int i = 0; i < count; i++) {
+                String[] strings = RtlSdr.getDeviceUsbStrings(i);
+                Log.d("RtlSdrStreamer", i + ": " + strings[1] + " (" + strings[2] + ")");
+            }
         } catch (Exception e) {
 
         }
