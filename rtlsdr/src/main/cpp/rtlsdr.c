@@ -544,24 +544,19 @@ JNIEXPORT jint JNICALL Java_com_donfbecker_rtlsdr_RtlDevice_readSync(JNIEnv *env
     jlong jdevHandle, dbbCapacity;
 
     if(buf == NULL) {
-        (*env)->ThrowNew(env, nullPointerExceptionClass,
-                         "Buffer is null.");
+        (*env)->ThrowNew(env, nullPointerExceptionClass, "Buffer is null.");
         return 0;
     }
 
     addr = (*env)->GetDirectBufferAddress(env, buf);
-
     if(addr == NULL) {
-        (*env)->ThrowNew(env, illegalArgumentExceptionClass,
-                         "Cannot get the buffer address. Is this really a direct buffer?");
+        (*env)->ThrowNew(env, illegalArgumentExceptionClass, "Cannot get the buffer address. Is this really a direct buffer?");
         return 0;
     }
 
     dbbCapacity = (*env)->GetDirectBufferCapacity(env, buf);
-
     if(len > dbbCapacity) {
-        (*env)->ThrowNew(env, illegalArgumentExceptionClass,
-                         "The specified length exceeds the size of the buffer.");
+        (*env)->ThrowNew(env, illegalArgumentExceptionClass, "The specified length exceeds the size of the buffer.");
         return 0;
     }
 

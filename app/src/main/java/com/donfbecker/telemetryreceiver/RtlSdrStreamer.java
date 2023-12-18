@@ -20,11 +20,11 @@ import android.util.Log;
 // 1.3ms of time.  8 of those sample blocks would represent 10.4ms of
 // pulse data, can can be combined to 512 samples to run though FFT.
 
-public class RtlSdrStreamer implements RtlCallback {
+public class RtlSdrStreamer {
     // Sample rate must be between 225001 and 300000 or 900001 and 3200000
-    public static final int IQ_SAMPLE_RATE = 1536000;
+    public static final int IQ_SAMPLE_RATE = 240000;
     public static final int AUDIO_SAMPLE_RATE = 48000;
-    public static final int SAMPLE_RATIO = 32;
+    public static final int SAMPLE_RATIO = 5;
 
     public static final double SQRT_TWO = Math.sqrt(2.0);
 
@@ -84,11 +84,8 @@ public class RtlSdrStreamer implements RtlCallback {
         device = new RtlDevice(0);
     }
 
-    public void rtlData(ByteBuffer buffer, int len) {
+    public void rtlData(byte[] iqBuffer, int len) {
         short[] trackBuffer = new short[trackBufferSize];
-        double[] iAvgBuffer = new double[trackBufferSize];
-        double[] qAvgBuffer = new double[trackBufferSize];
-        byte[] iqBuffer = new byte[iqBufferSize];
 
         double sumI;
         double sumQ;
@@ -98,7 +95,6 @@ public class RtlSdrStreamer implements RtlCallback {
         double a;
         double v;
 
-        buffer.get(iqBuffer);
         for (int j = 0; j < trackBufferSize; j++) {
             sumI = 0;
             sumQ = 0;
@@ -108,12 +104,11 @@ public class RtlSdrStreamer implements RtlCallback {
                 // & 0xFF converts these to unsigned
                 sumI += iFilter.filter(d_table[iqBuffer[offset] & 0xFF]);
                 sumQ += qFilter.filter(d_table[iqBuffer[offset + 1] & 0xFF]);
-
             }
 
             // Attenuation should be run before filtering
-            i = iAvgBuffer[j] = (sumI / SAMPLE_RATIO) * softwareGain * attenuation;
-            q = qAvgBuffer[j] = (sumQ / SAMPLE_RATIO) * softwareGain * attenuation;
+            i = (sumI / SAMPLE_RATIO) * softwareGain * attenuation;
+            q = (sumQ / SAMPLE_RATIO) * softwareGain * attenuation;
 
             // Divide by the square root of two to normalize max amplitude to 1.0
             a = Math.sqrt((i * i) + (q * q)) / SQRT_TWO;
@@ -144,8 +139,6 @@ public class RtlSdrStreamer implements RtlCallback {
         Log.d("RtlSdrStreamer", "RtlSdrStreamer.start()");
         if(RtlDevice.getDeviceCount() < 1) return false;
 
-        RtlCallback cb = this;
-
         new Thread() {
             @Override
             public void run() {
@@ -160,12 +153,22 @@ public class RtlSdrStreamer implements RtlCallback {
                     device.setCenterFreq(sdrFrequency);
                     device.resetBuffer();
 
-                    ByteBuffer buffer = ByteBuffer.allocateDirect(iqBufferSize);
+                    byte[] iqBuffer = new byte[iqBufferSize];
+                    int sdrBufferSize = (int)Math.ceil((double)iqBufferSize / 512) * 512;
+                    ByteBuffer readBuffer = ByteBuffer.allocateDirect(sdrBufferSize);
+                    ByteBuffer buffer = ByteBuffer.allocateDirect(sdrBufferSize * 2);
                     keepAlive = true;
                     while(keepAlive) {
-                        int read = device.readSync(buffer, buffer.capacity());
-                        rtlData(buffer, read);
-                        buffer.rewind();
+                        readBuffer.clear();
+                        int read = device.readSync(readBuffer, readBuffer.capacity());
+                        buffer.put(readBuffer);
+
+                        buffer.flip();
+                        while(buffer.remaining() > iqBufferSize) {
+                            buffer.get(iqBuffer);
+                            rtlData(iqBuffer, iqBuffer.length);
+                        }
+                        buffer.compact();
                     }
 
                     device.close();
