@@ -28,7 +28,6 @@
 
 #include "rtlsdr_i2c.h"
 #include "tuner_r82xx.h"
-#include "rtl-sdr.h"
 
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
 #define MHZ(x)		((x)*1000*1000)
@@ -1191,11 +1190,10 @@ int r82xx_set_freq(struct r82xx_priv *priv, uint32_t freq)
 		}
 	}
 
-	err:
+err:
 	if (rc < 0)
 		fprintf(stderr, "%s: failed=%d\n", __FUNCTION__, rc);
 	return rc;
-
 }
 
 /*

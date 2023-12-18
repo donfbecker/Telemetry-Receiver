@@ -1,20 +1,17 @@
 package com.donfbecker.telemetryreceiver;
 
-import com.donfbecker.rtlsdr.RtlSdr;
+import com.donfbecker.rtlsdr.RtlCallback;
+import com.donfbecker.rtlsdr.RtlDevice;
+import com.donfbecker.rtlsdr.UsbStrings;
 
-import java.io.BufferedInputStream;
-import java.io.DataInputStream;
 import java.io.InputStream;
-import java.lang.Thread;
+import java.nio.ByteBuffer;
 import java.net.Socket;
-import java.util.concurrent.ArrayBlockingQueue;
 
 import android.content.Context;
-import android.hardware.usb.UsbDevice;
+import android.media.AudioTrack;
 import android.media.AudioFormat;
 import android.media.AudioManager;
-import android.media.AudioTrack;
-import android.os.Handler;
 import android.util.Log;
 
 // I think I should sample at 240kHz.  That is a multiple of 5 to reduce
@@ -23,33 +20,19 @@ import android.util.Log;
 // 1.3ms of time.  8 of those sample blocks would represent 10.4ms of
 // pulse data, can can be combined to 512 samples to run though FFT.
 
-public class RtlSdrStreamer {
+public class RtlSdrStreamer implements RtlCallback {
     // Sample rate must be between 225001 and 300000 or 900001 and 3200000
-    public static final int IQ_SAMPLE_RATE = 240000;
+    public static final int IQ_SAMPLE_RATE = 1536000;
     public static final int AUDIO_SAMPLE_RATE = 48000;
-    public static final int SAMPLE_RATIO = 5;
+    public static final int SAMPLE_RATIO = 32;
 
     public static final double SQRT_TWO = Math.sqrt(2.0);
-
-    public static final byte COMMAND_SET_FREQUENCY        = 0x01;
-    public static final byte COMMAND_SET_SAMPLERATE       = 0x02;
-    public static final byte COMMAND_SET_GAIN_MODE        = 0x03;
-    public static final byte COMMAND_SET_GAIN             = 0x04;
-    public static final byte COMMAND_SET_FREQ_CORR        = 0x05;
-    public static final byte COMMAND_SET_IFGAIN           = 0x06;
-    public static final byte COMMAND_SET_AGC_MODE         = 0x08;
-    public static final byte COMMAND_SET_DIRECT_SAMPLING  = 0x09;
-    public static final byte COMMAND_SET_TUNING_OFFSET    = 0x0a;
-    public static final byte COMMAND_SET_RTL_XTAL         = 0x0b;
-    public static final byte COMMAND_SET_TUNER_XTAL       = 0x0c;
-    public static final byte COMMAND_SET_TUNER_GAIN_BY_ID = 0x0d;
-    public static final byte COMMAND_SET_BIAS_TEE         = 0x0e;
 
     public static final int MESSAGE_SIGNAL_STRENGTH       = 10001;
 
     public static final int[] GAIN_VALUES = {0, 9, 14, 27, 37, 77, 87, 125, 144, 157, 166, 197, 207, 229, 254, 280, 297, 328, 338, 364, 372, 386, 402, 421, 434, 439, 445, 480, 496};
 
-    private RtlSdr device;
+    private RtlDevice device;
 
     private Socket connection;
     private InputStream stream;
@@ -67,15 +50,12 @@ public class RtlSdrStreamer {
     private RCFilter iFilter;
     private RCFilter qFilter;
 
-    private ArrayBlockingQueue<byte[]> commandQueue = null;
-
     private double d_table[];
 
     private int blocks = 0;
     private double blockPowerMax;
 
     public RtlSdrStreamer(Context ctx) {
-        commandQueue = new ArrayBlockingQueue<byte[]>(100);
         iFilter = new RCFilter(RCFilter.FILTER_LOWPASS, 24000.0d, 1.0d/IQ_SAMPLE_RATE);
         qFilter = new RCFilter(RCFilter.FILTER_LOWPASS, 24000.0d, 1.0d/IQ_SAMPLE_RATE);
 
@@ -85,54 +65,130 @@ public class RtlSdrStreamer {
             d_table[i] = (double)(((double)i - 127.5f) / 127.5f);
         }
 
-        RtlSdr.initialize(ctx);
+        trackBufferSize = 64; //AudioTrack.getMinBufferSize(AUDIO_SAMPLE_RATE, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT);
+        iqBufferSize = trackBufferSize * SAMPLE_RATIO * 2;
+
+        Log.d("RtlSdrStreamer", "trackBufferSize = " + trackBufferSize);
+        Log.d("RtlSdrStreamer", "iqBufferSize = " + iqBufferSize);
+
+        audioTrack = new AudioTrack(AudioManager.STREAM_MUSIC, AUDIO_SAMPLE_RATE, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT, trackBufferSize, AudioTrack.MODE_STREAM);
+
+        RtlDevice.initialize(ctx);
+        device = new RtlDevice(0);
     }
 
-    public boolean isRunning() {
-        return false;
+    public void rtlData(ByteBuffer buffer, int len) {
+        short[] trackBuffer = new short[trackBufferSize];
+        double[] iAvgBuffer = new double[trackBufferSize];
+        double[] qAvgBuffer = new double[trackBufferSize];
+        byte[] iqBuffer = new byte[iqBufferSize];
+
+        double sumI;
+        double sumQ;
+        double sumA = 0;
+        double i;
+        double q;
+        double a;
+        double v;
+
+        buffer.get(iqBuffer);
+        for (int j = 0; j < trackBufferSize; j++) {
+            sumI = 0;
+            sumQ = 0;
+            for (int k = 0; k < SAMPLE_RATIO; k++) {
+                int offset = (j * (SAMPLE_RATIO * 2)) + (k * 2);
+
+                // & 0xFF converts these to unsigned
+                sumI += iFilter.filter(d_table[iqBuffer[offset] & 0xFF]);
+                sumQ += qFilter.filter(d_table[iqBuffer[offset + 1] & 0xFF]);
+
+            }
+
+            // Attenuation should be run before filtering
+            i = iAvgBuffer[j] = (sumI / SAMPLE_RATIO) * softwareGain * attenuation;
+            q = qAvgBuffer[j] = (sumQ / SAMPLE_RATIO) * softwareGain * attenuation;
+
+            // Divide by the square root of two to normalize max amplitude to 1.0
+            a = Math.sqrt((i * i) + (q * q)) / SQRT_TWO;
+            sumA += a;
+
+            v = q; // q is the real component of the signal.
+
+            //if(a < squelch) v = 0.0d;
+
+            if(v > 1) v = 1;
+            if(v < -1) v = -1;
+
+            trackBuffer[j] = (short)(v * 32767);
+        }
+
+        double power = sumA / trackBufferSize;
+        if(power > blockPowerMax) blockPowerMax = power;
+        if(++blocks >= 20) {
+            MainActivity.handler.sendMessage(MainActivity.handler.obtainMessage(MESSAGE_SIGNAL_STRENGTH, (int)(blockPowerMax * 1000000), 0));
+            blocks = 0;
+            blockPowerMax = 0.0;
+        }
+
+        int r = audioTrack.write(trackBuffer, 0, trackBufferSize);
     }
 
     public boolean start() {
         Log.d("RtlSdrStreamer", "RtlSdrStreamer.start()");
+        if(RtlDevice.getDeviceCount() < 1) return false;
 
-        try {
-            int count = RtlSdr.getDeviceCount();
-            Log.d("RtlSdrStreamer", "Available devices: " + count);
-            for(int i = 0; i < count; i++) {
-                String[] strings = RtlSdr.getDeviceUsbStrings(i);
-                Log.d("RtlSdrStreamer", i + ": " + strings[1] + " (" + strings[2] + ")");
+        RtlCallback cb = this;
+
+        new Thread() {
+            @Override
+            public void run() {
+                try {
+                    audioTrack.play();
+
+                    device.open();
+                    //device.setAgcMode(0);
+                    //device.setTunerGainMode(1);
+                    device.resetBuffer();
+                    device.readAsync(cb, 0, iqBufferSize);
+
+                    audioTrack.stop();
+                } catch (Exception e) {
+                    Log.d("RtlSdrStreamer", e.getMessage());
+                }
             }
-        } catch (Exception e) {
-
-        }
+        }.start();
 
         return true;
     }
 
     public boolean stop() {
         Log.d("DEBUG", "Stop requested");
-        stayAlive = false;
+        device.cancelAsync();
+        device.close();
         return true;
     }
 
-    public boolean setFrequency(int frequency) {
-        return sendCommand(COMMAND_SET_FREQUENCY, frequency);
+    public boolean setFrequency(long frequency) {
+        device.setCenterFreq(frequency);
+        return true;
     }
 
     public boolean setTunerOffset(int offset) {
-        return sendCommand(COMMAND_SET_TUNING_OFFSET, offset);
+        return true;
     }
 
     public boolean setFrequencyCorrection(int correction) {
-        return sendCommand(COMMAND_SET_FREQ_CORR, correction);
+        return true;
     }
 
     public boolean setGainMode(boolean manual) {
-        return sendCommand(COMMAND_SET_GAIN_MODE, manual ? 0x01 : 0x00);
+        device.setTunerGainMode(manual ? 1 : 0);
+        return true;
     }
 
     public boolean setGain(int gain) {
-        return sendCommand(COMMAND_SET_GAIN, gain);
+        device.setTunerGain(gain);
+        return true;
     }
 
     public boolean setSoftwareGain(double gain) {
@@ -156,43 +212,11 @@ public class RtlSdrStreamer {
     }
 
     public boolean setAGCMode(boolean enabled) {
-        return sendCommand(COMMAND_SET_AGC_MODE, enabled ? 0x01 : 0x00);
+        device.setAgcMode(enabled ? 1 : 0);
+        return true;
     }
 
     public boolean setBiasTee(boolean enabled) {
-        return sendCommand(COMMAND_SET_BIAS_TEE, enabled ? 0x01 : 0x00);
-    }
-
-    private boolean sendCommand(byte command, int arg) {
-        if(connection == null || !connection.isConnected()) return false;
-        commandQueue.offer(commandToPacket(command, arg));
         return true;
-    }
-
-    private boolean sendCommand(byte command, short arg1, short arg2) {
-        if(connection == null || !connection.isConnected()) return false;
-        commandQueue.offer(commandToPacket(command, arg1, arg2));
-        return true;
-    }
-    private byte[] commandToPacket(byte command, int arg) {
-        byte[] packet = new byte[5];
-        packet[0] = command;
-        packet[1] = (byte)((arg >> 24) & 0xFF);
-        packet[2] = (byte)((arg >> 16) & 0xFF);
-        packet[3] = (byte)((arg >> 8) & 0xFF);
-        packet[4] = (byte)(arg & 0xFF);
-
-        return packet;
-    }
-
-    private byte[] commandToPacket(byte command, short arg1, short arg2) {
-        byte[] packet = new byte[5];
-        packet[0] = command;
-        packet[1] = (byte)((arg1 >> 8) & 0xFF);
-        packet[2] = (byte)(arg1 & 0xFF);
-        packet[3] = (byte)((arg2 >> 8) & 0xFF);
-        packet[4] = (byte)(arg2 & 0xFF);
-
-        return packet;
     }
 }

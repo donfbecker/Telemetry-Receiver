@@ -106,8 +106,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         switch(view.getId()) {
             case R.id.button_start:
                 streamer.start();
-                streamer.setFrequency(currentFrequency);
-                streamer.setGain(currentGain);
                 break;
 
             case R.id.button_stop:

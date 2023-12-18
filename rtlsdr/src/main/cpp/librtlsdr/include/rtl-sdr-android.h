@@ -29,6 +29,6 @@
 extern "C" {
 #endif
 
-RTLSDR_API int rtlsdr_open2(rtlsdr_dev_t **out_dev, int fd, const char * devicePath);
+RTLSDR_API int rtlsdr_open_android(rtlsdr_dev_t **out_dev, int fd);
 
 #endif /* __RTL_ANDRO_SDR_H */
