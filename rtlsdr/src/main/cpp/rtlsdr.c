@@ -16,6 +16,7 @@
  */
 
 //#include <stdint.h>
+#include <stdio.h>
 #include <string.h>
 #include <jni.h>
 #include "rtlsdr.h"
@@ -47,7 +48,6 @@ jfieldID rtlDevHandleField = NULL;
 jmethodID rtlCallbackMethod = NULL;
 
 jclass JNICALL createGlobalClassRef(JNIEnv *env, const char *name) {
-
     jclass localRef, globalRef;
 
     localRef = (*env)->FindClass(env, name);
@@ -75,12 +75,9 @@ jlong JNICALL getDeviceHandle(JNIEnv *env, jobject rtlDeviceObject) {
     jlong jdevHandle;
 
     jdevHandle = (*env)->GetLongField(env, rtlDeviceObject, rtlDevHandleField);
-
     if(jdevHandle == 0L) {
-
         jdevIndex = (*env)->GetIntField(env, rtlDeviceObject, rtlDevIndexField);
         throwNewRtlException(env, "There is no active device handle for index %i.", jdevIndex);
-
     }
 
     return jdevHandle;
@@ -613,7 +610,6 @@ void AsyncCallback(unsigned char *buf, uint32_t len, void *ctx) {
 }
 
 JNIEXPORT void JNICALL Java_com_donfbecker_rtlsdr_RtlDevice_readAsync(JNIEnv *env, jobject obj, jobject jcb, jint numBuffers, jint bufferLen) {
-
     int ret;
     jcb_ctx_t ctx;
     jlong jdevHandle;

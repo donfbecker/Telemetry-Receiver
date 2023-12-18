@@ -112,6 +112,10 @@ public class RtlDevice {
     this.devHandle = 0L;
   }
 
+  public boolean isOpen() {
+    return (devHandle != 0L);
+  }
+
   public void open() throws ExecutionException, InterruptedException {
     UsbDevice usbDevice = getDeviceByIndex(devIndex);
     if(usbDevice == null) {

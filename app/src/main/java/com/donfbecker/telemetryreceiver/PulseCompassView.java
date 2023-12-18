@@ -101,7 +101,6 @@ public class PulseCompassView extends View implements SensorEventListener {
     }
 
     public void addPulse(double amplitude) {
-        Log.d("DEBUG", "Adding pulse with amplitude of " + amplitude + " at " + currentBearing + " degrees.");
         if(amplitude > pulses[currentBearing]) pulses[currentBearing] = amplitude;
         invalidate();
     }

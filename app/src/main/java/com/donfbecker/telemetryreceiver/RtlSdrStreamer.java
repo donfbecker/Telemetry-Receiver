@@ -42,10 +42,15 @@ public class RtlSdrStreamer implements RtlCallback {
     private int trackBufferSize;
     private int iqBufferSize;
 
+    // SDR settings
+    private long sdrFrequency = 148500000;
+    private int sdrTunerGain  = 0;
+    private boolean sdrAgcEnabled = false;
+
     private double softwareGain = 1.0d;
     private double attenuation = 1.0d;
     private double squelch = 0.0d;
-    private boolean agcEnabled = false;
+
 
     private RCFilter iFilter;
     private RCFilter qFilter;
@@ -54,6 +59,8 @@ public class RtlSdrStreamer implements RtlCallback {
 
     private int blocks = 0;
     private double blockPowerMax;
+
+    private boolean keepAlive = false;
 
     public RtlSdrStreamer(Context ctx) {
         iFilter = new RCFilter(RCFilter.FILTER_LOWPASS, 24000.0d, 1.0d/IQ_SAMPLE_RATE);
@@ -146,14 +153,25 @@ public class RtlSdrStreamer implements RtlCallback {
                     audioTrack.play();
 
                     device.open();
-                    //device.setAgcMode(0);
-                    //device.setTunerGainMode(1);
+                    device.setSampleRate(IQ_SAMPLE_RATE);
+                    device.setAgcMode(sdrAgcEnabled ? 1 : 0);
+                    device.setTunerGainMode(1);
+                    device.setTunerGain(sdrTunerGain);
+                    device.setCenterFreq(sdrFrequency);
                     device.resetBuffer();
-                    device.readAsync(cb, 0, iqBufferSize);
 
+                    ByteBuffer buffer = ByteBuffer.allocateDirect(iqBufferSize);
+                    keepAlive = true;
+                    while(keepAlive) {
+                        int read = device.readSync(buffer, buffer.capacity());
+                        rtlData(buffer, read);
+                        buffer.rewind();
+                    }
+
+                    device.close();
                     audioTrack.stop();
                 } catch (Exception e) {
-                    Log.d("RtlSdrStreamer", e.getMessage());
+                    Log.d("RtlSdrStreamer", "Exception: " + e.getMessage());
                 }
             }
         }.start();
@@ -163,13 +181,13 @@ public class RtlSdrStreamer implements RtlCallback {
 
     public boolean stop() {
         Log.d("DEBUG", "Stop requested");
-        device.cancelAsync();
-        device.close();
+        keepAlive = false;
         return true;
     }
 
     public boolean setFrequency(long frequency) {
-        device.setCenterFreq(frequency);
+        sdrFrequency = frequency;
+        if(device.isOpen()) device.setCenterFreq(frequency);
         return true;
     }
 
@@ -182,17 +200,18 @@ public class RtlSdrStreamer implements RtlCallback {
     }
 
     public boolean setGainMode(boolean manual) {
-        device.setTunerGainMode(manual ? 1 : 0);
+        if(device.isOpen()) device.setTunerGainMode(manual ? 1 : 0);
         return true;
     }
 
     public boolean setGain(int gain) {
-        device.setTunerGain(gain);
+        sdrTunerGain = gain;
+        if(device.isOpen()) device.setTunerGain(gain);
         return true;
     }
 
     public boolean setSoftwareGain(double gain) {
-        this.softwareGain = gain;
+        softwareGain = gain;
         return true;
     }
 
@@ -212,7 +231,8 @@ public class RtlSdrStreamer implements RtlCallback {
     }
 
     public boolean setAGCMode(boolean enabled) {
-        device.setAgcMode(enabled ? 1 : 0);
+        sdrAgcEnabled = enabled;
+        if(device.isOpen()) device.setAgcMode(enabled ? 1 : 0);
         return true;
     }
 

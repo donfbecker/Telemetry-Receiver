@@ -35,7 +35,6 @@ public class PulseGaugeView extends View {
     }
 
     public void addPulse(double amplitude) {
-        Log.d("DEBUG", "Adding pulse with amplitude of " + amplitude);
         if(amplitude > this.amplitude) this.amplitude = amplitude;
         else this.amplitude *= 0.9;
         invalidate();
