@@ -195,7 +195,7 @@ public class RtlDevice {
 
   public native void setTestMode(int on);
   public native void setAgcMode(int on);
-
+  public native void setBiasTee(int on);
   public native void setDirectSampling(int on);
   public native int getDirectSampling();
 

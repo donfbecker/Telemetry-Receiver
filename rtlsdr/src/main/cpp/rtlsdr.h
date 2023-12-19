@@ -191,6 +191,14 @@ JNIEXPORT void JNICALL Java_com_donfbecker_rtlsdr_RtlDevice_setAgcMode
 
 /*
  * Class:     com_donfbecker_rtlsdr_RtlDevice
+ * Method:    setBiasTee
+ * Signature: (I)V
+ */
+JNIEXPORT void JNICALL Java_com_donfbecker_rtlsdr_RtlDevice_setBiasTee
+        (JNIEnv *, jobject, jint);
+
+/*
+ * Class:     com_donfbecker_rtlsdr_RtlDevice
  * Method:    setDirectSampling
  * Signature: (I)V
  */

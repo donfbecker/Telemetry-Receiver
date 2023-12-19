@@ -63,6 +63,7 @@ public class RtlSdrStreamer {
     private long sdrFrequency = 148500000;
     private int sdrTunerGain  = 0;
     private boolean sdrAgcEnabled = false;
+    private boolean sdrBiasTeeEnabled = false;
 
     private double softwareGain = 1.0d;
     private double attenuation = 1.0d;
@@ -257,6 +258,8 @@ public class RtlSdrStreamer {
     }
 
     public boolean setBiasTee(boolean enabled) {
+        sdrBiasTeeEnabled = enabled;
+        if(device.isOpen()) device.setBiasTee(enabled ? 1 : 0);
         return true;
     }
 }

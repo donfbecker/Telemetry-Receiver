@@ -474,6 +474,18 @@ JNIEXPORT void JNICALL Java_com_donfbecker_rtlsdr_RtlDevice_setAgcMode(JNIEnv *e
 
 }
 
+JNIEXPORT void JNICALL Java_com_donfbecker_rtlsdr_RtlDevice_setBiasTee(JNIEnv *env, jobject obj, jint on) {
+    int ret;
+    jlong jdevHandle;
+
+    jdevHandle = getDeviceHandle(env, obj);
+    if((*env)->ExceptionCheck(env) == JNI_TRUE) return;
+
+    ret = rtlsdr_set_bias_tee((rtlsdr_dev_t *)jdevHandle, (int)on);
+    if(ret != 0) throwNewRtlException(env, "rtlsdr_set_bias_tee returned %i", ret);
+
+}
+
 JNIEXPORT void JNICALL Java_com_donfbecker_rtlsdr_RtlDevice_setDirectSampling(JNIEnv *env, jobject obj, jint on) {
     int ret;
     jlong jdevHandle;
