@@ -17,28 +17,38 @@
 
 package com.donfbecker.telemetryreceiver;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.lifecycle.ViewModelProvider;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+import androidx.recyclerview.widget.ItemTouchHelper;
 
 import android.annotation.SuppressLint;
 import android.content.pm.ActivityInfo;
 import android.content.Intent;
 
+import android.graphics.Canvas;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
 import android.util.Log;
+import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Button;
 import android.widget.CompoundButton;
+import android.widget.ListView;
 import android.widget.SeekBar;
 import android.widget.Switch;
 import android.widget.TextView;
 
 import com.donfbecker.telemetryreceiver.R;
+import com.google.android.material.snackbar.Snackbar;
 
-public class MainActivity extends AppCompatActivity implements View.OnClickListener, SeekBar.OnSeekBarChangeListener, Switch.OnCheckedChangeListener {
+public class MainActivity extends AppCompatActivity implements SeekBar.OnSeekBarChangeListener, Switch.OnCheckedChangeListener {
+    public static final int NEW_BOOKMARK_REQUEST_CODE = 1001;
 
     private RtlSdrStreamer streamer;
 
@@ -61,6 +71,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private static PulseGaugeView pulseGauge;
     private static PulseCompassView pulseCompass;
 
+    private BookmarkViewModel bookmarkViewModel;
 
 
     public static Handler handler = new Handler(Looper.getMainLooper()) {
@@ -88,12 +99,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         streamer = new RtlSdrStreamer(getApplicationContext());
 
-        startButton = findViewById(R.id.button_start);
-        startButton.setOnClickListener(this);
-
-        stopButton = findViewById(R.id.button_stop);
-        stopButton.setOnClickListener(this);
-
         frequencyText = findViewById(R.id.text_frequency);
         frequencyText.setText(String.format("%.6f", (currentFrequency / 1000000f)));
 
@@ -114,21 +119,83 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         biasTeeSwitch = findViewById(R.id.switch_bias_tee);
         biasTeeSwitch.setOnCheckedChangeListener(this);
+
+        RecyclerView bookmarksRecycleView = findViewById(R.id.list_bookmarks);
+        final BookmarkListAdapter adapter = new BookmarkListAdapter(new BookmarkListAdapter.BookmarkDiff(), new OnItemClickListener() {
+            @Override
+            public void onItemClick(Bookmark bookmark) {
+                setFrequency(bookmark.frequency);
+            }
+        });
+        bookmarksRecycleView.setAdapter(adapter);
+        bookmarksRecycleView.setLayoutManager(new LinearLayoutManager(this));
+        bookmarksRecycleView.setNestedScrollingEnabled(false);
+
+        bookmarkViewModel = new ViewModelProvider(this).get(BookmarkViewModel.class);
+        bookmarkViewModel.getAllBookmarks().observe(this, bookmarks -> {
+            adapter.submitList(bookmarks);
+        });
+
+        new ItemTouchHelper(new ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.RIGHT) {
+            @Override
+            public boolean onMove(@NonNull RecyclerView recyclerView, @NonNull RecyclerView.ViewHolder viewHolder, @NonNull RecyclerView.ViewHolder target) {
+                return false;
+            }
+
+            @Override
+            public void onSwiped(@NonNull RecyclerView.ViewHolder viewHolder, int direction) {
+                // this method is called when we swipe our item to right direction.
+                // on below line we are getting the item at a particular position.
+                int position = viewHolder.getAdapterPosition();
+                Bookmark bookmark = adapter.getItemByPosition(position);
+                bookmarkViewModel.delete(bookmark);
+                adapter.notifyItemRemoved(position);
+                adapter.notifyItemRangeChanged(position, adapter.getItemCount());
+
+                // below line is to display our snackbar with action.
+                Snackbar.make(bookmarksRecycleView, "Deleted " + bookmark.getName(), Snackbar.LENGTH_LONG).setAction("Undo", new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        // adding on click listener to our action of snack bar.
+                        // below line is to add our item to array list with a position.
+                        bookmarkViewModel.insert(bookmark);
+
+                        // below line is to notify item is
+                        // added to our adapter class.
+                        adapter.notifyItemInserted(position);
+                    }
+                }).show();
+            }
+            // at last we are adding this
+            // to our recycler view.
+        }).attachToRecyclerView(bookmarksRecycleView);
+    }
+
+    public void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if(requestCode == NEW_BOOKMARK_REQUEST_CODE && resultCode == RESULT_OK) {
+            String name = data.getStringExtra(NewBookmarkActivity.NAME_REPLY);
+            int frequency = Integer.parseInt(data.getStringExtra(NewBookmarkActivity.FREQUENCY_REPLY));
+            Bookmark bookmark = new Bookmark(name, frequency);
+            bookmarkViewModel.insert(bookmark);
+        }
     }
 
     //
     // Button events, or anything with a click I guess
     //
-    public void onClick(View view) {
-        switch(view.getId()) {
-            case R.id.button_start:
-                streamer.start();
-                break;
+    public void onStartClick(View view) {
+        streamer.start();
+    }
 
-            case R.id.button_stop:
-                streamer.stop();
-                break;
-        }
+    public void onStopClick(View view) {
+        streamer.stop();
+    }
+
+    public void onNewBookmarkClick(View view) {
+        Intent intent = new Intent(MainActivity.this, NewBookmarkActivity.class);
+        intent.putExtra(NewBookmarkActivity.FREQUENCY_REPLY, currentFrequency);
+        startActivityForResult(intent, NEW_BOOKMARK_REQUEST_CODE);
     }
 
     //
