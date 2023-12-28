@@ -14,25 +14,24 @@
 			</LinearLayout>
 
 			<LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
-				<Button android:id="@+id/button_plus_1000000" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_margin="5dp" android:text="+" android:onClick="onIncreaseFrequency" />
+				<Button android:id="@+id/button_plus_1000000" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="3" android:layout_margin="5dp" android:text="+" android:onClick="onIncreaseFrequency" />
 				<Button android:id="@+id/button_plus_100000" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_margin="5dp" android:text="+" android:onClick="onIncreaseFrequency" />
 				<Button android:id="@+id/button_plus_10000" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_margin="5dp" android:text="+" android:onClick="onIncreaseFrequency" />
 				<Button android:id="@+id/button_plus_1000" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_margin="5dp" android:text="+" android:onClick="onIncreaseFrequency" />
-				<Button android:id="@+id/button_plus_100" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_margin="5dp" android:text="+" android:onClick="onIncreaseFrequency" />
-				<Button android:id="@+id/button_plus_10" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_margin="5dp" android:text="+" android:onClick="onIncreaseFrequency" />
-				<Button android:id="@+id/button_plus_1" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_margin="5dp" android:text="+" android:onClick="onIncreaseFrequency" />
 			</LinearLayout>
 
 			<TextView android:id="@+id/text_frequency" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_margin="5dp" android:text="Frequency" android:textSize="32dp" android:textAlignment="center" />
 
 			<LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
-				<Button android:id="@+id/button_minus_1000000" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_margin="5dp" android:text="-" android:onClick="onDecreaseFrequency" />
+				<Button android:id="@+id/button_minus_1000000" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="3" android:layout_margin="5dp" android:text="-" android:onClick="onDecreaseFrequency" />
 				<Button android:id="@+id/button_minus_100000" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_margin="5dp" android:text="-" android:onClick="onDecreaseFrequency" />
 				<Button android:id="@+id/button_minus_10000" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_margin="5dp" android:text="-" android:onClick="onDecreaseFrequency" />
 				<Button android:id="@+id/button_minus_1000" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_margin="5dp" android:text="-" android:onClick="onDecreaseFrequency" />
-				<Button android:id="@+id/button_minus_100" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_margin="5dp" android:text="-" android:onClick="onDecreaseFrequency" />
-				<Button android:id="@+id/button_minus_10" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_margin="5dp" android:text="-" android:onClick="onDecreaseFrequency" />
-				<Button android:id="@+id/button_minus_1" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_margin="5dp" android:text="-" android:onClick="onDecreaseFrequency" />
+			</LinearLayout>
+
+			<LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+				<Button android:id="@+id/button_new_bookmark" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_margin="5dp" android:text="Add Bookmark" android:onClick="onNewBookmarkClick" />
+				<Button android:id="@+id/button_pick_bookmark" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_margin="5dp" android:text="Pick Bookmark" android:onClick="onPickBookmarkClick" />
 			</LinearLayout>
 
 			<com.donfbecker.telemetryreceiver.PulseGaugeView android:id="@+id/pulse_gauge" android:layout_width="match_parent" android:layout_height="25dp" android:layout_margin="5dp" />
@@ -59,12 +58,6 @@
 				<TextView android:id="@+id/text_bias_tee" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="60" android:layout_margin="5dp" android:text="Bias Tee" />
 				<Switch android:id="@+id/switch_bias_tee"  android:layout_width="0dp" android:layout_height="wrap_content" android:layout_margin="5dp" android:layout_weight="40" /> 
 			</LinearLayout>
-
-			<RelativeLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_margin="5dp">
-				<androidx.recyclerview.widget.RecyclerView android:id="@+id/list_bookmarks" android:layout_width="match_parent" android:layout_height="wrap_content" tools:listitem="@layout/bookmark_item" />
-			</RelativeLayout>
-
-			<Button android:id="@+id/button_new_bookmark" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_margin="5dp" android:text="New Bookmark" android:onClick="onNewBookmarkClick" />
 		</LinearLayout>
 	</androidx.core.widget.NestedScrollView>
 </androidx.constraintlayout.widget.ConstraintLayout>

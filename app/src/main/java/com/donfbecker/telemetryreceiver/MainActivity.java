@@ -48,7 +48,8 @@ import com.donfbecker.telemetryreceiver.R;
 import com.google.android.material.snackbar.Snackbar;
 
 public class MainActivity extends AppCompatActivity implements SeekBar.OnSeekBarChangeListener, Switch.OnCheckedChangeListener {
-    public static final int NEW_BOOKMARK_REQUEST_CODE = 1001;
+    public static final int BOOKMARK_REQUEST_CODE = 1001;
+    public static final int NEW_BOOKMARK_REQUEST_CODE = 1002;
 
     private RtlSdrStreamer streamer;
 
@@ -70,9 +71,6 @@ public class MainActivity extends AppCompatActivity implements SeekBar.OnSeekBar
 
     private static PulseGaugeView pulseGauge;
     private static PulseCompassView pulseCompass;
-
-    private BookmarkViewModel bookmarkViewModel;
-
 
     public static Handler handler = new Handler(Looper.getMainLooper()) {
         @Override
@@ -100,7 +98,7 @@ public class MainActivity extends AppCompatActivity implements SeekBar.OnSeekBar
         streamer = new RtlSdrStreamer(getApplicationContext());
 
         frequencyText = findViewById(R.id.text_frequency);
-        frequencyText.setText(String.format("%.6f", (currentFrequency / 1000000f)));
+        frequencyText.setText(String.format("%.3f", (currentFrequency / 1000000f)));
 
         pulseGauge = findViewById(R.id.pulse_gauge);
         pulseCompass = findViewById(R.id.pulse_compass);
@@ -119,65 +117,15 @@ public class MainActivity extends AppCompatActivity implements SeekBar.OnSeekBar
 
         biasTeeSwitch = findViewById(R.id.switch_bias_tee);
         biasTeeSwitch.setOnCheckedChangeListener(this);
-
-        RecyclerView bookmarksRecycleView = findViewById(R.id.list_bookmarks);
-        final BookmarkListAdapter adapter = new BookmarkListAdapter(new BookmarkListAdapter.BookmarkDiff(), new OnItemClickListener() {
-            @Override
-            public void onItemClick(Bookmark bookmark) {
-                setFrequency(bookmark.frequency);
-            }
-        });
-        bookmarksRecycleView.setAdapter(adapter);
-        bookmarksRecycleView.setLayoutManager(new LinearLayoutManager(this));
-        bookmarksRecycleView.setNestedScrollingEnabled(false);
-
-        bookmarkViewModel = new ViewModelProvider(this).get(BookmarkViewModel.class);
-        bookmarkViewModel.getAllBookmarks().observe(this, bookmarks -> {
-            adapter.submitList(bookmarks);
-        });
-
-        new ItemTouchHelper(new ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.RIGHT) {
-            @Override
-            public boolean onMove(@NonNull RecyclerView recyclerView, @NonNull RecyclerView.ViewHolder viewHolder, @NonNull RecyclerView.ViewHolder target) {
-                return false;
-            }
-
-            @Override
-            public void onSwiped(@NonNull RecyclerView.ViewHolder viewHolder, int direction) {
-                // this method is called when we swipe our item to right direction.
-                // on below line we are getting the item at a particular position.
-                int position = viewHolder.getAdapterPosition();
-                Bookmark bookmark = adapter.getItemByPosition(position);
-                bookmarkViewModel.delete(bookmark);
-                adapter.notifyItemRemoved(position);
-                adapter.notifyItemRangeChanged(position, adapter.getItemCount());
-
-                // below line is to display our snackbar with action.
-                Snackbar.make(bookmarksRecycleView, "Deleted " + bookmark.getName(), Snackbar.LENGTH_LONG).setAction("Undo", new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        // adding on click listener to our action of snack bar.
-                        // below line is to add our item to array list with a position.
-                        bookmarkViewModel.insert(bookmark);
-
-                        // below line is to notify item is
-                        // added to our adapter class.
-                        adapter.notifyItemInserted(position);
-                    }
-                }).show();
-            }
-            // at last we are adding this
-            // to our recycler view.
-        }).attachToRecyclerView(bookmarksRecycleView);
     }
 
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if(requestCode == NEW_BOOKMARK_REQUEST_CODE && resultCode == RESULT_OK) {
-            String name = data.getStringExtra(NewBookmarkActivity.NAME_REPLY);
-            int frequency = Integer.parseInt(data.getStringExtra(NewBookmarkActivity.FREQUENCY_REPLY));
-            Bookmark bookmark = new Bookmark(name, frequency);
-            bookmarkViewModel.insert(bookmark);
+            Snackbar.make(frequencyText, "Bookmark saved", Snackbar.LENGTH_LONG);
+        } else if (requestCode == BOOKMARK_REQUEST_CODE && resultCode == RESULT_OK) {
+            int frequency = data.getIntExtra("FREQUENCY", 150000000);
+            setFrequency(frequency);
         }
     }
 
@@ -194,8 +142,13 @@ public class MainActivity extends AppCompatActivity implements SeekBar.OnSeekBar
 
     public void onNewBookmarkClick(View view) {
         Intent intent = new Intent(MainActivity.this, NewBookmarkActivity.class);
-        intent.putExtra(NewBookmarkActivity.FREQUENCY_REPLY, currentFrequency);
+        intent.putExtra("FREQUENCY", currentFrequency);
         startActivityForResult(intent, NEW_BOOKMARK_REQUEST_CODE);
+    }
+
+    public void onPickBookmarkClick(View view) {
+        Intent intent = new Intent(MainActivity.this, BookmarksActivity.class);
+        startActivityForResult(intent, BOOKMARK_REQUEST_CODE);
     }
 
     //
@@ -255,7 +208,7 @@ public class MainActivity extends AppCompatActivity implements SeekBar.OnSeekBar
 
     private void setFrequency(int frequency) {
         this.currentFrequency = frequency;
-        frequencyText.setText(String.format("%.6f", (currentFrequency/1000000.0)));
+        frequencyText.setText(String.format("%.3f", (currentFrequency/1000000.0)));
         streamer.setFrequency(frequency);
     }
 

@@ -10,9 +10,6 @@ import android.widget.Button;
 import android.widget.EditText;
 
 public class NewBookmarkActivity extends AppCompatActivity {
-    public static final String NAME_REPLY = "com.donfbecker.telemetryreceiver.bookmark.NAME";
-    public static final String FREQUENCY_REPLY = "com.donfbecker.telemetryreceiver.bookmark.FREQUENCY";
-
     private EditText nameText;
     private EditText frequencyText;
 
@@ -23,16 +20,19 @@ public class NewBookmarkActivity extends AppCompatActivity {
 
         nameText = findViewById(R.id.edit_name);
         frequencyText = findViewById(R.id.edit_frequency);
-        int f = getIntent().getIntExtra(FREQUENCY_REPLY, 150000000);
+        int f = getIntent().getIntExtra("FREQUENCY", 150000000);
         frequencyText.setText(Integer.toString(f));
 
         final Button button = findViewById(R.id.button_save);
         button.setOnClickListener(view -> {
             if(!TextUtils.isEmpty(nameText.getText()) && !TextUtils.isEmpty(frequencyText.getText())) {
-                Intent reply = new Intent();
-                reply.putExtra(NAME_REPLY, nameText.getText().toString());
-                reply.putExtra(FREQUENCY_REPLY, frequencyText.getText().toString());
-                setResult(RESULT_OK, reply);
+                String name = nameText.getText().toString();
+                int frequency = Integer.parseInt(frequencyText.getText().toString());
+
+                BookmarkRepository repository = new BookmarkRepository(getApplication());
+                repository.insert(new Bookmark(name, frequency));
+
+                setResult(RESULT_OK);
                 finish();
             }
         });

@@ -15,6 +15,9 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.TelemetryReceiver">
         <activity
+            android:name=".BookmarksActivity"
+            android:exported="false" />
+        <activity
             android:name=".NewBookmarkActivity"
             android:exported="false" />
         <activity
